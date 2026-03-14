@@ -1020,6 +1020,15 @@
             async saveAdminKey(key) {
                 const hash = await this.sha256(key);
                 localStorage.setItem(CONFIG.STORAGE_KEYS.ADMIN_KEY_HASH, hash);
+            },
+            
+            // 验证管理员密钥
+            async verifyAdminKey(input) {
+                const result = await BackendAPI.adminLogin(input);
+                if (result.success && result.token) {
+                    gameState.adminToken = result.token;
+                }
+                return result.success;
             }
         };
 
@@ -1150,17 +1159,6 @@
                 await db.ref(`/admin/sessions/${token}`).remove();
             }
         };
-
-        
-        // 为了保持兼容性，提供同步包装（实际验证是异步的）
-        async function verifyAdminKey(input) {
-            // 所有验证都通过后端API进行
-            const result = await BackendAPI.adminLogin(input);
-            if (result.success && result.token) {
-                gameState.adminToken = result.token;  // 保存 token
-            }
-            return result.success;
-        }
         
         // ==================== 默认题库 ====================
         // ==================== 游戏状态 ====================
