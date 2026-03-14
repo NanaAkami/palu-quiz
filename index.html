@@ -1,0 +1,2692 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>幻兽帕鲁知识竞赛 - 每周挑战</title>
+    <!-- Firebase SDK (Compat Mode) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script>
+        try {
+            const firebaseConfig = {
+                apiKey: "AIzaSyDwb5W_Qk9A6LFwcw1piqSRv63wb5kM-t8",
+                authDomain: "nana01-9a9ee.firebaseapp.com",
+                projectId: "nana01-9a9ee",
+                storageBucket: "nana01-9a9ee.firebasestorage.app",
+                messagingSenderId: "462751727825",
+                appId: "1:462751727825:web:7e90dc50d3bc295964c5f0"
+            };
+            
+            // 初始化 Firebase
+            if (typeof firebase !== 'undefined') {
+                firebase.initializeApp(firebaseConfig);
+                window.firebaseDB = firebase.firestore();
+                console.log('Firebase initialized');
+            } else {
+                console.warn('Firebase SDK not loaded');
+                window.firebaseDB = null;
+            }
+        } catch (e) {
+            console.error('Firebase init error:', e);
+            window.firebaseDB = null;
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .game-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 650px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .start-screen, .game-screen, .end-screen, .leaderboard-screen, .admin-screen, .records-screen {
+            display: none;
+        }
+        
+        .start-screen.active, .game-screen.active, .end-screen.active, 
+        .leaderboard-screen.active, .admin-screen.active, .records-screen.active {
+            display: block;
+        }
+        
+        .game-title {
+            font-size: 2.2em;
+            color: #667eea;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .game-subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .round-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .round-info .round-title {
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        
+        .round-info .round-time {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .round-info .round-countdown {
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-top: 10px;
+            padding: 8px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+        }
+        
+        .round-info.ended {
+            background: #6c757d;
+        }
+        
+        .top-players {
+            background: #fff8e1;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 2px solid #ffc107;
+        }
+        
+        .top-players h3 {
+            text-align: center;
+            color: #856404;
+            margin-bottom: 12px;
+            font-size: 1em;
+        }
+        
+        .top-player-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px dashed #ffc107;
+        }
+        
+        .top-player-item:last-child {
+            border-bottom: none;
+        }
+        
+        .top-player-rank {
+            font-size: 1.5em;
+            margin-right: 10px;
+        }
+        
+        .top-player-name {
+            flex: 1;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .top-player-score {
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: bold;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: border-color 0.2s;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .rules {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .rules h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .rules ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .rules li {
+            padding: 8px 0;
+            color: #555;
+            padding-left: 25px;
+            position: relative;
+        }
+        
+        .rules li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .attempts-info {
+            background: #e8eeff;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .attempts-info .used {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        .attempts-info .remaining {
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1em;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: inline-block;
+            margin: 5px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .btn-success {
+            background: #28a745;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+        }
+        
+        .btn-warning {
+            background: #ffc107;
+            color: #333;
+        }
+        
+        .btn-sm {
+            padding: 8px 20px;
+            font-size: 0.9em;
+        }
+        
+        .btn-admin {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 6px 12px;
+            font-size: 0.75em;
+            background: transparent;
+            color: #999;
+            border: 1px solid #ddd;
+        }
+        
+        .btn-admin:hover {
+            background: #f0f0f0;
+            color: #666;
+        }
+        
+        .admin-login-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .admin-login-modal.active {
+            display: flex;
+        }
+        
+        .admin-login-box {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        .hidden { display: none !important; }
+        
+        .error-msg {
+            color: #dc3545;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        .success-msg {
+            color: #28a745;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #856404;
+        }
+        
+        .info-box {
+            background: #d1ecf1;
+            border: 1px solid #17a2b8;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #0c5460;
+        }
+        
+        /* 游戏界面 */
+        .stats-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .streak-counter {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .question-counter {
+            font-size: 0.9em;
+            color: #888;
+        }
+        
+        .timer {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.2em;
+            font-weight: bold;
+            padding: 8px 15px;
+            border-radius: 20px;
+            background: #f0f0f0;
+            transition: all 0.3s;
+        }
+        
+        .timer.warning {
+            background: #fff3cd;
+            color: #856404;
+            animation: pulse 0.5s infinite;
+        }
+        
+        .timer.danger {
+            background: #f8d7da;
+            color: #721c24;
+            animation: pulse 0.3s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .timer-bar {
+            width: 100%;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+        
+        .timer-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #ffc107, #dc3545);
+            transition: width 1s linear;
+            border-radius: 3px;
+        }
+        
+        .beat-percentage {
+            text-align: center;
+            padding: 10px;
+            background: #e8f5e9;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            color: #2e7d32;
+            font-weight: bold;
+        }
+        
+        .milestone {
+            text-align: center;
+            padding: 10px;
+            background: #fff8e1;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            color: #f57c00;
+            font-weight: bold;
+            animation: milestonePop 0.5s;
+        }
+        
+        @keyframes milestonePop {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .question {
+            font-size: 1.15em;
+            color: #333;
+            margin-bottom: 20px;
+            line-height: 1.6;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .option {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            padding: 15px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+            font-size: 1em;
+        }
+        
+        .option:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+            transform: translateX(5px);
+        }
+        
+        .option.selected-wrong {
+            background: #f8d7da;
+            border-color: #dc3545;
+            animation: shake 0.5s;
+        }
+        
+        .option.disabled {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        
+        /* 结束界面 */
+        .result-box {
+            text-align: center;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .final-score {
+            font-size: 4em;
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .score-label {
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .rank-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 30px;
+            border-radius: 25px;
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        
+        .encouragement {
+            background: #e8f5e9;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            color: #2e7d32;
+        }
+        
+        .encouragement.next-week {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .attempts-history {
+            margin: 20px 0;
+            padding: 15px;
+            background: #fff;
+            border-radius: 10px;
+        }
+        
+        .attempts-history h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .attempt-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .attempt-row:last-child {
+            border-bottom: none;
+        }
+        
+        .attempt-row.best {
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        /* 排行榜 */
+        .leaderboard {
+            margin-top: 20px;
+        }
+        
+        .leaderboard h3 {
+            text-align: center;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .leaderboard-table th,
+        .leaderboard-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .leaderboard-table th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .leaderboard-table tr:nth-child(1) td {
+            background: #fff3cd;
+            font-weight: bold;
+        }
+        
+        .leaderboard-table tr:nth-child(2) td {
+            background: #e2e3e5;
+        }
+        
+        .leaderboard-table tr:nth-child(3) td {
+            background: #f8d7da;
+        }
+        
+        .export-section {
+            margin-top: 25px;
+            padding: 20px;
+            background: #e8eeff;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .export-section h4 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        /* 管理员界面 */
+        .admin-panel {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .admin-panel h3 {
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .admin-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .admin-tab {
+            padding: 10px 20px;
+            background: #e0e0e0;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .admin-tab.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .admin-content {
+            display: none;
+        }
+        
+        .admin-content.active {
+            display: block;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-card .stat-label {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .cheat-alert {
+            background: #f8d7da;
+            border: 1px solid #dc3545;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+            color: #721c24;
+        }
+        
+        /* 反馈动画 */
+        .feedback-overlay {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 4em;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .feedback-overlay.show {
+            opacity: 1;
+            animation: feedbackPop 0.8s ease-out;
+        }
+        
+        @keyframes feedbackPop {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+        }
+        
+        .share-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container" style="position: relative;">
+        <button class="btn btn-admin" onclick="showAdminLogin()">🔒 我是管理员</button>
+        
+        <!-- 开始界面 -->
+        <div class="start-screen active" id="startScreen">
+            <h1 class="game-title">🎮 幻兽帕鲁知识竞赛</h1>
+            <p class="game-subtitle">每周限时挑战活动</p>
+            
+            <div class="round-info" id="roundInfo">
+                <div class="round-title">📅 本周挑战进行中</div>
+                <div class="round-time" id="roundTime">--</div>
+                <div class="round-countdown" id="roundCountdown">--</div>
+            </div>
+            
+            <div class="top-players" id="topPlayers">
+                <h3>🏆 本周 TOP 3</h3>
+                <div id="topPlayersList">暂无数据</div>
+            </div>
+            
+            <div class="rules">
+                <h3>📋 游戏规则</h3>
+                <ul>
+                    <li>每周限时开放，请在结束前完成挑战</li>
+                    <li>无尽模式：连续答题直到答错为止</li>
+                    <li>每题限时20秒，点击选项直接作答</li>
+                    <li>每人每周限玩3次，取最高分计入排行榜</li>
+                </ul>
+            </div>
+            
+            <div class="input-group">
+                <label for="nickname">👤 输入你的昵称</label>
+                <input type="text" id="nickname" placeholder="起个酷炫的昵称吧" maxlength="20">
+                <div class="error-msg hidden" id="nicknameError"></div>
+            </div>
+            
+            <div id="playerAttemptsInfo"></div>
+            
+            <div style="text-align: center; margin-top: 25px;">
+                <button class="btn" id="startBtn" onclick="startGame()">开始挑战</button>
+                <button class="btn btn-secondary" onclick="showLeaderboard()">查看排行榜</button>
+                <button class="btn btn-success" onclick="showMyRecords()">我的记录</button>
+            </div>
+        </div>
+        
+        <!-- 游戏界面 -->
+        <div class="game-screen" id="gameScreen">
+            <div class="stats-bar">
+                <div>
+                    <div class="streak-counter">🔥 连对: <span id="streakCount">0</span></div>
+                    <div class="question-counter">第 <span id="questionNumber">1</span> 题</div>
+                </div>
+                <div class="timer" id="timer">
+                    <span>⏱️</span>
+                    <span id="timeLeft">20</span>s
+                </div>
+            </div>
+            
+            <div class="timer-bar">
+                <div class="timer-bar-fill" id="timerBar" style="width: 100%"></div>
+            </div>
+            
+            <div class="beat-percentage hidden" id="beatPercentage"></div>
+            <div class="milestone hidden" id="milestone"></div>
+            
+            <div class="question" id="questionText">加载中...</div>
+            
+            <div class="options" id="optionsContainer"></div>
+        </div>
+        
+        <!-- 结束界面 -->
+        <div class="end-screen" id="endScreen">
+            <div class="result-box">
+                <div class="score-label">本次答对</div>
+                <div class="final-score" id="finalScore">0</div>
+                <div class="rank-badge" id="rankBadge">评级计算中...</div>
+                <div id="beatFinalPercentage"></div>
+            </div>
+            
+            <div class="encouragement" id="encouragement"></div>
+            
+            <div class="attempts-history" id="attemptsHistory"></div>
+            
+            <div class="share-section" id="shareSection">
+                <div style="margin-bottom: 10px; font-weight: bold;">📤 分享你的成绩</div>
+                <button class="btn btn-sm" onclick="copyShareText()">复制分享文案</button>
+            </div>
+            
+            <div style="text-align: center;">
+                <button class="btn" id="playAgainBtn" onclick="playAgain()">再玩一次</button>
+                <button class="btn btn-secondary" onclick="showLeaderboard()">查看排行榜</button>
+                <button class="btn btn-success" onclick="backToHome()">返回主页</button>
+            </div>
+        </div>
+        
+        <!-- 排行榜界面 -->
+        <div class="leaderboard-screen" id="leaderboardScreen">
+            <h2 style="text-align: center; margin-bottom: 20px;">🏆 本周排行榜</h2>
+            
+            <div class="info-box" id="leaderboardInfo">
+                <div>本轮参与人数：<strong id="participantCount">0</strong> 人</div>
+                <div>您的最佳排名：<strong id="myBestRank">--</strong></div>
+            </div>
+            
+            <div class="leaderboard" id="leaderboardContent">
+                <div style="text-align: center; color: #666;">暂无数据</div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 25px;">
+                <button class="btn" onclick="backToHome()">返回主页</button>
+            </div>
+        </div>
+        
+        <!-- 我的记录界面 -->
+        <div class="records-screen" id="recordsScreen">
+            <h2 style="text-align: center; margin-bottom: 20px;">📊 我的挑战记录</h2>
+            
+            <div id="myRecordsContent">
+                <div style="text-align: center; color: #666; padding: 30px;">
+                    请先输入昵称开始游戏
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 25px;">
+                <button class="btn" onclick="backToHome()">返回主页</button>
+            </div>
+        </div>
+        
+        <!-- 管理员界面 -->
+        <div class="admin-screen" id="adminScreen">
+            <h2 style="text-align: center; margin-bottom: 20px;">🔧 管理员后台</h2>
+            
+            <div class="admin-tabs">
+                <button class="admin-tab active" onclick="switchAdminTab('overview')">总览</button>
+                <button class="admin-tab" onclick="switchAdminTab('players')">玩家数据</button>
+                <button class="admin-tab" onclick="switchAdminTab('questions')">题库管理</button>
+                <button class="admin-tab" onclick="switchAdminTab('settings')">活动设置</button>
+                <button class="admin-tab" onclick="switchAdminTab('export')">数据导出</button>
+            </div>
+            
+            <!-- 总览 -->
+            <div class="admin-content active" id="adminOverview">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="statTotalPlayers">0</div>
+                        <div class="stat-label">参与玩家</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statTotalAttempts">0</div>
+                        <div class="stat-label">总挑战次数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statAvgScore">0</div>
+                        <div class="stat-label">平均分</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statHighestScore">0</div>
+                        <div class="stat-label">最高分</div>
+                    </div>
+                </div>
+                
+                <div class="admin-panel">
+                    <h3>🚨 疑似作弊检测</h3>
+                    <div id="cheatAlerts">暂无异常</div>
+                </div>
+            </div>
+            
+            <!-- 玩家数据 -->
+            <div class="admin-content" id="adminPlayers">
+                <div class="admin-panel">
+                    <h3>玩家列表</h3>
+                    <div id="adminPlayersList">暂无数据</div>
+                </div>
+            </div>
+            
+            <!-- 题库管理 -->
+            <div class="admin-content" id="adminQuestions">
+                <div class="admin-panel">
+                    <h3>题库管理</h3>
+                    <div style="margin-bottom: 15px;">
+                        <button class="btn btn-sm" onclick="addNewQuestion()">+ 添加题目</button>
+                        <button class="btn btn-sm btn-secondary" onclick="resetToDefaultQuestions()">恢复默认题库</button>
+                    </div>
+                    <div id="questionsList"></div>
+                </div>
+            </div>
+            
+            <!-- 活动设置 -->
+            <div class="admin-content" id="adminSettings">
+                <div class="admin-panel">
+                    <h3>活动设置</h3>
+                    <div class="input-group">
+                        <label>本轮开始时间</label>
+                        <input type="datetime-local" id="roundStartTime">
+                    </div>
+                    <div class="input-group">
+                        <label>本轮结束时间</label>
+                        <input type="datetime-local" id="roundEndTime">
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <button class="btn" onclick="saveRoundSettings()">保存设置</button>
+                        <button class="btn btn-secondary" onclick="endRoundNow()">立即结束本轮</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 数据导出 -->
+            <div class="admin-content" id="adminExport">
+                <div class="admin-panel">
+                    <h3>数据导出</h3>
+                    <div style="margin-bottom: 15px;">
+                        <button class="btn" onclick="exportRoundData()">导出本轮数据</button>
+                        <button class="btn btn-secondary" onclick="exportAllHistory()">导出全部历史</button>
+                    </div>
+                    <textarea id="adminExportText" readonly style="width: 100%; height: 300px; padding: 10px; border-radius: 8px; border: 1px solid #ddd; resize: none;"></textarea>
+                    <button class="btn btn-success" onclick="copyAdminExport()" style="margin-top: 10px;">复制数据</button>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 25px;">
+                <button class="btn btn-danger" onclick="logoutAdmin()">退出管理后台</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 管理员登录弹窗 -->
+    <div class="admin-login-modal" id="adminLoginModal">
+        <div class="admin-login-box">
+            <h3 style="text-align: center; margin-bottom: 20px;">🔒 管理员登录</h3>
+            <div class="input-group">
+                <label>请输入管理员密钥</label>
+                <input type="password" id="adminKey" placeholder="输入密钥">
+                <div class="error-msg hidden" id="adminKeyError">密钥错误</div>
+            </div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn" onclick="loginAdmin()">登录</button>
+                <button class="btn btn-secondary" onclick="hideAdminLogin()">取消</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 反馈动画元素 -->
+    <div class="feedback-overlay" id="feedbackOverlay"></div>
+    
+    <script>
+        // ==================== 配置 ====================
+        const CONFIG = {
+            STORAGE_KEYS: {
+                QUESTIONS: 'paluQuizQuestions_v2',
+                RECORDS: 'paluQuizRecords_v2',
+                ROUND: 'paluQuizRound_v2',
+                ADMIN_KEY: 'paluQuizAdminKey',
+                IP_RECORDS: 'paluQuizIP_v2'
+            },
+            MAX_ATTEMPTS: 3,
+            QUESTION_TIME: 20,
+            // 默认管理员密钥 - 实际使用时应该修改
+            DEFAULT_ADMIN_KEY: 'palu2024admin',
+            // 防作弊：最短答题时间（毫秒）- 少于这个时间视为可疑
+            MIN_ANSWER_TIME: 800,
+            // 防作弊：每秒答题数阈值
+            MAX_QUESTIONS_PER_SECOND: 1.5
+        };
+        
+        // ==================== 密钥加密工具 ====================
+        const KeyCrypto = {
+            // 简单的混淆密钥 - 可自定义修改
+            SECRET: 'PaluQuiz2024!@#',
+            
+            encrypt(text) {
+                if (!text) return '';
+                const combined = text + this.SECRET;
+                let result = '';
+                for (let i = 0; i < combined.length; i++) {
+                    const charCode = combined.charCodeAt(i) ^ this.SECRET.charCodeAt(i % this.SECRET.length);
+                    result += String.fromCharCode(charCode);
+                }
+                return btoa(result);
+            },
+            
+            decrypt(encrypted) {
+                if (!encrypted) return '';
+                try {
+                    const decoded = atob(encrypted);
+                    let result = '';
+                    for (let i = 0; i < decoded.length; i++) {
+                        const charCode = decoded.charCodeAt(i) ^ this.SECRET.charCodeAt(i % this.SECRET.length);
+                        result += String.fromCharCode(charCode);
+                    }
+                    // 移除末尾的SECRET
+                    if (result.endsWith(this.SECRET)) {
+                        return result.slice(0, -this.SECRET.length);
+                    }
+                    return '';
+                } catch (e) {
+                    return '';
+                }
+            },
+            
+            // 生成加密后的默认密钥
+            getEncryptedDefaultKey() {
+                return this.encrypt(CONFIG.DEFAULT_ADMIN_KEY);
+            }
+        };
+        
+        // 保存加密后的密钥
+        function saveAdminKey(key) {
+            localStorage.setItem(CONFIG.STORAGE_KEYS.ADMIN_KEY, KeyCrypto.encrypt(key));
+        }
+        
+        // 获取解密的密钥
+        function getAdminKey() {
+            const encrypted = localStorage.getItem(CONFIG.STORAGE_KEYS.ADMIN_KEY);
+            return encrypted ? KeyCrypto.decrypt(encrypted) : '';
+        }
+        
+        // 验证管理员密钥
+        function verifyAdminKey(input) {
+            const savedKey = getAdminKey();
+            return input === savedKey || input === CONFIG.DEFAULT_ADMIN_KEY;
+        }
+        
+        // ==================== 默认题库 ====================
+        const DEFAULT_QUESTIONS = [
+            {question: "游戏中的'幸运帕鲁'我们一般称之为", options: ["闪光帕鲁", "狂暴帕鲁头目"], correct: 0},
+            {question: "不考虑词条的情况下，以下哪只帕鲁通常具有更大的食量", options: ["森猛犸", "紫霞鹿"], correct: 0},
+            {question: "《幻兽帕鲁》的PC版开发商是哪家公司？", options: ["KRAFTON", "Pocketpair"], correct: 1},
+            {question: "以下哪个是帕鲁世界观设定中的终极目标", options: ["高塔即为关键之钥", "活着才有希望"], correct: 0},
+            {question: "幻兽帕鲁PC的核心玩法属于以下哪种品类", options: ["MMO", "SOC"], correct: 1},
+            {question: "在帕鲁世界中，温泉的作用是什么", options: ["提升帕鲁好感度", "让疲惫的帕鲁休息，并回复SAN值"], correct: 1},
+            {question: "当帕鲁在战斗中死亡时，需要放回终端后多久才能再度使用", options: ["8分钟", "10分钟"], correct: 1},
+            {question: "道具中修理套装的作用是", options: ["修补损坏的建筑", "修复损坏的武器或道具"], correct: 1},
+            {question: "道具中通缉犯讨伐证明的作用是", options: ["交给自卫队兑换赏金", "永久提升队伍帕鲁的能力值"], correct: 1},
+            {question: "帕鲁球的颜色代表其等级，初始最基础的帕鲁球是什么颜色？", options: ["绿色", "蓝色"], correct: 1},
+            {question: "帕鲁浓缩机的作用是什么？", options: ["制作帕鲁罐头", "强化帕鲁星级"], correct: 1},
+            {question: "如果你想在地图上快速飞行，哪只帕鲁被称为版本中后期的'神'，移动速度最快？", options: ["迅雷鸟", "空涡龙"], correct: 1},
+            {question: "'暗属性'的帕鲁在打工界有以下哪个主要优势？", options: ["搬运物品速度翻倍", "夜晚不休息，24小时打工"], correct: 1},
+            {question: "幻兽帕鲁于哪年开启了抢先体验", options: ["2023年", "2024年"], correct: 1},
+            {question: "帕鲁终端里的'浓缩机'如果想将一只帕鲁升到满星（4星），总共需要消耗多少只同类？", options: ["50只", "116只"], correct: 1},
+            {question: "关于'帕鲁浓缩机'，如果你将已经满星（4星）的帕鲁作为祭品喂给另一只，会发生什么？", options: ["被喂食的帕鲁获得的经验值显著高于0星帕鲁", "被喂食的帕鲁会瞬间升到5星"], correct: 0},
+            {question: "如果想要通过配种稳定获得具有'传说'词条的帕鲁，双亲中至少需要有一方是？", options: ["原生传说级帕鲁", "拥有'稀有'词条的闪光帕鲁"], correct: 0},
+            {question: "'词条'中的'工匠精神'能提升50%的工作速度，它能加成牧场的产出速度吗？", options: ["能，所有工作都会变快", "不能，牧场产出速度受星级影响，不受工作速度加成"], correct: 1},
+            {question: "帕鲁在据点工作后，SAN值（理智值）降低，以下哪种方法能有效恢复？", options: ["把他们放进背包", "让其泡温泉", "把它们关进终端"], correct: 1},
+            {question: "以下具有双属性的帕鲁是：", options: ["棉悠悠", "疾旋鼬", "火绒狐"], correct: 1},
+            {question: "以下哪种工作适应性，是前期神宠'碎岩龟'所具备的？", options: ["采矿", "浇水", "手工"], correct: 0},
+            {question: "在野外捕捉帕鲁时，如果帕鲁陷入了'中毒'或'烧伤'状态，对其捕捉成功率有何影响？", options: ["会显著提升捕捉成功率", "没有任何影响，只看剩余血量", "会降低成功率，因为帕鲁变得狂躁"], correct: 0},
+            {question: "当你骑乘飞行坐骑（如迅雷鸟）在空中飞行时，体力耗尽会发生什么？", options: ["强制进入降落状态直到着地", "帕鲁会直接消失回到球里", "直接从高空坠落并摔死"], correct: 0},
+            {question: "如果你的据点经常被火属性帕鲁袭击，以下哪个决策是正确的？", options: ["使用木材建造地基和墙壁", "放置更多的水属性帕鲁进行防御", "放置更多的冰属性帕鲁进行防御"], correct: 1},
+            {question: "以下哪种伤害类型对所有属性的帕鲁都能造成100%的基础伤害，不存在任何'被克制'带来的减伤？", options: ["龙属性", "暗属性", "无属性"], correct: 2},
+            {question: "关于'伙伴技能'等级，唯一提升该技能（如坐骑速度、掉落加成）的方法是？", options: ["提升帕鲁等级", "提升与帕鲁的亲密度", "在帕鲁浓缩机中提升该帕鲁的星级"], correct: 2},
+            {question: "以下哪只帕鲁不能帮助你跨水域远距离跑图", options: ["滑水蛇", "疾旋鼬", "空涡龙"], correct: 1},
+            {question: "如果你在沙漠中感到'极热'，除了穿耐热服，以下哪种帕鲁在队伍中能起到降温作用？", options: ["水灵儿", "吹雪狐", "火绒狐"], correct: 1},
+            {question: "游戏中被称为'性价比之王'的被动词条'社畜'，其真实效果是？", options: ["不需要睡觉并持续工作", "同时具有多项工作技能", "工作速度提升，但攻击力因此下降"], correct: 2},
+            {question: "当帕鲁处于'极度饥饿'且'心情抑郁'时，它在据点内的行为表现最可能是？", options: ["瞬间消失并回到帕鲁球内", "在进食区无限循环'进食-放弃'动作", "自发寻找敌对帕鲁进行攻击"], correct: 1},
+            {question: "在属性克制闭环中，为什么'火属性'帕鲁被公认为版本强势属性？", options: ["火属性帕鲁基础攻击面板高", "火属性技能带有烧伤效果，无视防御", "火属性是唯一一个同时克制两个属性的系别"], correct: 2},
+            {question: "在后期制作'传奇帕鲁球'时，除了帕鲁矿碎块和帕鲁油，还需要消耗大量的'水泥'。制作水泥最核心的原材料循环是？", options: ["石头+骨头+帕鲁体液", "金属锭+碳纤维+电路板", "木材+纤维+毒液"], correct: 0},
+            {question: "在进行'高阶配种'时，为什么很多玩家会故意保留'白板'帕鲁（无词条）作为亲本？", options: ["白板帕鲁孵化出的蛋更大", "白板帕鲁产生变异的概率更高", "稀释词条池，防止多余的杂质词条遗传给后代"], correct: 2},
+            {question: "当你建造了'监控台'并设置帕鲁的工作模式为'残酷压榨'时，最显著的负面反馈是？", options: ["帕鲁会直接从据点名单中逃跑", "SAN值下降速度极快，导致帕鲁频繁骨折或抑郁", "帕鲁会自发攻击领地内的建筑"], correct: 1},
+            {question: "为什么玩家在后期会大规模种植'生菜'和'西红柿'而不是最初的面包？", options: ["因为生菜可以直接卖更多金币", "为了制作'沙拉'，从而大幅提升帕鲁的工作效率", "因为高等级帕鲁不吃面包"], correct: 1},
+            {question: "在战斗中，如果帕鲁由于死亡回到球内，它回复血量的前提是？", options: ["必须放入'帕鲁终端'的仓库中才能开始复活/回血", "给他喂食烤野莓", "只要在背包里，随时间推移缓慢回复"], correct: 0},
+            {question: "'帕鲁球工厂II'在没有帕鲁参与的情况下，能否由发电机独立维持进行生产？", options: ["可以，电力是唯一动力源", "不可以，发电机只供电，仍需'手工'帕鲁进行生产操作", "不可以，流水线需要生火帕鲁提供热能驱动"], correct: 1},
+            {question: "如果你想通过'肢解（切割）'帕鲁来获得最高收益，以下关于'掉落逻辑'的描述正确的是？", options: ["肢解获得的材料种类与捕捉/击杀时完全一致，相当于二次掉落", "肢解只会产出'帕鲁肉'，不再产出其他素材", "肢解后的帕鲁会变为灵魂形态，可以再次复活"], correct: 0},
+            {question: "帕鲁的信赖度提升有什么好处", options: ["工作适应性提升", "抓取同种帕鲁机率提升", "能力值提升", "经验值获取增加"], correct: 1},
+            {question: "火热帕鲁蛋中无法孵化出以下哪个帕鲁", options: ["火绒狐", "炎魔羊", "烽歌龙", "玉藻狐"], correct: 3},
+            {question: "第一禁猎区中无法捕捉到以下哪个帕鲁", options: ["森猛犸", "暴电熊", "企丸王", "祗岳鹿"], correct: 2},
+            {question: "帕鲁远征所中的目的地如何解锁", options: ["提升玩家等级", "提升帕鲁总战力", "击败高塔头目", "增加帕鲁数量"], correct: 2},
+            {question: "以下帕鲁中拥有草属性的是", options: ["碧海龙", "海誓龙", "草莽猪", "米露菲"], correct: 2},
+            {question: "跨界帕鲁终端的作用是以下哪种", options: ["多据点宠物互通", "帕鲁带到其他世界", "传送到其他世界", "共享多据点建筑功能"], correct: 1},
+            {question: "关于'帕鲁球'，如果你用低级球捕捉高等级怪，系统提示概率为0%，这意味着？", options: ["绝对无法捕捉，球会直接弹开", "虽然显示是0%，但依旧拥有极低的概率进行捕捉", "丢的球会对帕鲁造成伤害", "我需要尝试下背后丢球"], correct: 1},
+            {question: "'工作狂'这个词条在实际生产中它的作用是？", options: ["增加工作速度", "增加搬运上限", "减少工作时SAN值的下降速度", "减少饥饿速率"], correct: 2},
+            {question: "关于'浓缩机'对'伙伴技能'的提升，以下哪项描述是错误的？", options: ["星级会显著提升帕鲁的基础血量、攻击和防御", "每升一星，伙伴技能的倍率都会增加", "4星帕鲁的采矿/手工等级会额外+1", "升星可以增加帕鲁的技能格位，让它带4个主动技能"], correct: 3},
+            {question: "在据点中，'伐木场'和'采石场'的产出上限是？", options: ["无限", "999", "9999", "由帕鲁的搬运等级决定"], correct: 0},
+            {question: "在攻击Boss时，如果屏幕上跳出的伤害数字是灰色的，代表？", options: ["Boss正在回血", "暴击了", "伤害被目标的属性抗性严重减免", "触发了弱点攻击"], correct: 2},
+            {question: "帕鲁被动词条【贵族】的效果是？", options: ["改善交易价格", "降低SAN值下降速度", "提升属性潜能", "减轻无属性伤害"], correct: 0},
+            {question: "以下哪个道具不需要消耗古代科技点？", options: ["帕鲁浓缩机", "腰挂提灯", "配种牧场", "简易开锁工具"], correct: 1},
+            {question: "下述哪个区域是在火山区域的？", options: ["干燥沙滩", "灼热峡谷", "战火爪痕", "日暮沙地"], correct: 1},
+            {question: "玩家最多可以随身携带多少只帕鲁？", options: ["3", "5", "6", "10"], correct: 1},
+            {question: "新叶猿没有哪项工作技能", options: ["浇水", "采集", "手工作业", "采伐"], correct: 0},
+            {question: "游戏中帕鲁球的种类", options: ["6", "7", "8", "9"], correct: 1},
+            {question: "帕鲁工作适应性等级最高是多少级", options: ["4", "5", "6", "7"], correct: 0}
+        ];
+        
+        // ==================== 游戏状态 ====================
+        let gameState = {
+            currentNickname: '',
+            currentStreak: 0,
+            currentQuestionNum: 0,
+            currentQuestion: null,
+            timer: null,
+            timeLeft: CONFIG.QUESTION_TIME,
+            usedQuestions: [],
+            isProcessing: false,
+            questionStartTime: 0,
+            lastAnswerTime: 0,
+            totalAnswerTime: 0,
+            isAdmin: false
+        };
+        
+        // ==================== 存储工具 ====================
+        function getStorage(key, defaultValue = null) {
+            try {
+                const data = localStorage.getItem(key);
+                return data ? JSON.parse(data) : defaultValue;
+            } catch (e) {
+                console.error('读取存储失败:', e);
+                return defaultValue;
+            }
+        }
+        
+        function setStorage(key, value) {
+            try {
+                localStorage.setItem(key, JSON.stringify(value));
+            } catch (e) {
+                console.error('保存存储失败:', e);
+            }
+        }
+        
+        // ==================== 云端数据同步 ====================
+        const CloudSync = {
+            db: null,
+            isOnline: true,
+            pendingSync: [],
+            enabled: false,
+            
+            init() {
+                this.db = window.firebaseDB;
+                
+                if (!this.db) {
+                    console.log('CloudSync: Firebase未初始化，使用本地模式');
+                    this.enabled = false;
+                    return;
+                }
+                
+                this.enabled = true;
+                this.checkConnection();
+                
+                // 监听网络状态
+                window.addEventListener('online', () => {
+                    this.isOnline = true;
+                    this.syncPending();
+                });
+                window.addEventListener('offline', () => {
+                    this.isOnline = false;
+                });
+                
+                console.log('CloudSync: 已初始化');
+            },
+            
+            checkConnection() {
+                this.isOnline = navigator.onLine;
+            },
+            
+            // 获取轮次ID
+            getRoundId() {
+                const round = getCurrentRound();
+                return round.id || 'default';
+            },
+            
+            // 保存玩家记录到云端
+            async savePlayerRecord(nickname, data) {
+                if (!this.enabled || !this.db || !this.isOnline) {
+                    this.pendingSync.push({ type: 'record', nickname, data });
+                    return false;
+                }
+                
+                try {
+                    const roundId = this.getRoundId();
+                    const docRef = this.db.collection('rounds').doc(roundId).collection('players').doc(nickname);
+                    await docRef.set({
+                        ...data,
+                        lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                    return true;
+                } catch (e) {
+                    console.error('保存到云端失败:', e);
+                    this.pendingSync.push({ type: 'record', nickname, data });
+                    return false;
+                }
+            },
+            
+            // 获取玩家记录（云端优先）
+            async getPlayerRecord(nickname) {
+                if (!this.enabled || !this.db || !this.isOnline) {
+                    return getStorage(CONFIG.STORAGE_KEYS.RECORDS, {})[nickname] || null;
+                }
+                
+                try {
+                    const roundId = this.getRoundId();
+                    const docRef = this.db.collection('rounds').doc(roundId).collection('players').doc(nickname);
+                    const docSnap = await docRef.get();
+                    
+                    if (docSnap.exists) {
+                        const cloudData = docSnap.data();
+                        // 同步到本地
+                        const records = getStorage(CONFIG.STORAGE_KEYS.RECORDS, {});
+                        records[nickname] = cloudData;
+                        setStorage(CONFIG.STORAGE_KEYS.RECORDS, records);
+                        return cloudData;
+                    }
+                    return null;
+                } catch (e) {
+                    console.error('从云端读取失败:', e);
+                    return getStorage(CONFIG.STORAGE_KEYS.RECORDS, {})[nickname] || null;
+                }
+            },
+            
+            // 获取排行榜（前50名）
+            async getLeaderboard(limitCount = 50) {
+                if (!this.enabled || !this.db || !this.isOnline) {
+                    return this.getLocalLeaderboard(limitCount);
+                }
+                
+                try {
+                    const roundId = this.getRoundId();
+                    const snapshot = await this.db.collection('rounds').doc(roundId).collection('players')
+                        .orderBy('bestScore', 'desc')
+                        .limit(limitCount)
+                        .get();
+                    
+                    const leaderboard = [];
+                    snapshot.forEach((doc) => {
+                        leaderboard.push({
+                            nickname: doc.id,
+                            ...doc.data()
+                        });
+                    });
+                    return leaderboard;
+                } catch (e) {
+                    console.error('获取排行榜失败:', e);
+                    return this.getLocalLeaderboard(limitCount);
+                }
+            },
+            
+            // 获取本地排行榜（离线备用）
+            getLocalLeaderboard(limit = 50) {
+                const records = getStorage(CONFIG.STORAGE_KEYS.RECORDS, {});
+                const currentRoundId = getCurrentRound().id;
+                
+                const leaderboard = [];
+                for (const [nickname, data] of Object.entries(records)) {
+                    const roundAttempts = data.attempts?.filter(a => a.roundId === currentRoundId) || [];
+                    if (roundAttempts.length > 0) {
+                        const bestScore = Math.max(...roundAttempts.map(a => a.score));
+                        leaderboard.push({
+                            nickname,
+                            bestScore,
+                            attempts: roundAttempts.length,
+                            lastAttempt: roundAttempts[roundAttempts.length - 1]?.timestamp
+                        });
+                    }
+                }
+                
+                leaderboard.sort((a, b) => b.bestScore - a.bestScore);
+                return leaderboard.slice(0, limit);
+            },
+            
+            // 监听排行榜实时更新
+            subscribeToLeaderboard(callback, limitCount = 50) {
+                if (!this.enabled || !this.db) return null;
+                
+                try {
+                    const roundId = this.getRoundId();
+                    return this.db.collection('rounds').doc(roundId).collection('players')
+                        .orderBy('bestScore', 'desc')
+                        .limit(limitCount)
+                        .onSnapshot((snapshot) => {
+                            const leaderboard = [];
+                            snapshot.forEach((doc) => {
+                                leaderboard.push({
+                                    nickname: doc.id,
+                                    ...doc.data()
+                                });
+                            });
+                            callback(leaderboard);
+                        });
+                } catch (e) {
+                    console.error('订阅排行榜失败:', e);
+                    return null;
+                }
+            },
+            
+            // 同步待处理的数据
+            async syncPending() {
+                if (!this.isOnline || this.pendingSync.length === 0) return;
+                
+                const items = [...this.pendingSync];
+                this.pendingSync = [];
+                
+                for (const item of items) {
+                    if (item.type === 'record') {
+                        await this.savePlayerRecord(item.nickname, item.data);
+                    }
+                }
+            }
+        };
+        
+        // ==================== 题库管理 ====================
+        function getQuestions() {
+            return getStorage(CONFIG.STORAGE_KEYS.QUESTIONS, DEFAULT_QUESTIONS);
+        }
+        
+        function saveQuestions(questions) {
+            setStorage(CONFIG.STORAGE_KEYS.QUESTIONS, questions);
+        }
+        
+        // ==================== 玩家记录管理 ====================
+        function getPlayerRecords() {
+            return getStorage(CONFIG.STORAGE_KEYS.RECORDS, {});
+        }
+        
+        function savePlayerRecord(nickname, score, answerTimes = []) {
+            const records = getPlayerRecords();
+            const roundId = getCurrentRound().id;
+            
+            if (!records[nickname]) {
+                records[nickname] = {
+                    attempts: [],
+                    roundId: roundId
+                };
+            }
+            
+            const attempt = {
+                score: score,
+                timestamp: Date.now(),
+                answerTimes: answerTimes,
+                roundId: roundId
+            };
+            
+            records[nickname].attempts.push(attempt);
+            
+            // 计算本周最佳
+            const roundAttempts = records[nickname].attempts.filter(a => a.roundId === roundId);
+            const bestScore = Math.max(...roundAttempts.map(a => a.score));
+            
+            // 保存到本地
+            setStorage(CONFIG.STORAGE_KEYS.RECORDS, records);
+            
+            // 同步到云端
+            CloudSync.savePlayerRecord(nickname, {
+                attempts: records[nickname].attempts,
+                bestScore: bestScore,
+                roundId: roundId
+            });
+            
+            return attempt;
+        }
+        
+        function getPlayerAttempts(nickname) {
+            const records = getPlayerRecords();
+            const playerData = records[nickname];
+            if (!playerData || !playerData.attempts) return [];
+            
+            const currentRoundId = getCurrentRound().id;
+            return playerData.attempts.filter(a => a.roundId === currentRoundId);
+        }
+        
+        // ==================== IP 限制 ====================
+        function getIPRecords() {
+            return getStorage(CONFIG.STORAGE_KEYS.IP_RECORDS, {});
+        }
+        
+        function getClientIP() {
+            // 由于前端无法获取真实IP，使用一个基于浏览器指纹的模拟方案
+            // 实际生产环境应该在后端实现
+            const fingerprint = navigator.userAgent + screen.width + screen.height + screen.colorDepth;
+            let hash = 0;
+            for (let i = 0; i < fingerprint.length; i++) {
+                const char = fingerprint.charCodeAt(i);
+                hash = ((hash << 5) - hash) + char;
+                hash = hash & hash;
+            }
+            return 'fp_' + Math.abs(hash).toString(16);
+        }
+        
+        function checkIPLimit(nickname) {
+            const ipRecords = getIPRecords();
+            const currentIP = getClientIP();
+            const currentRoundId = getCurrentRound().id;
+            
+            // 先检查当前IP是否已绑定其他昵称（同一设备换名）
+            const existingRecord = ipRecords[currentIP];
+            if (existingRecord && existingRecord.roundId === currentRoundId) {
+                if (existingRecord.nickname !== nickname) {
+                    return {
+                        allowed: false,
+                        message: `哎呀，被我发现啦！🕵️ 这台设备已经用过"${existingRecord.nickname}"这个昵称了，不能换名字重复答题哦～做人要诚实！`,
+                        existingNickname: existingRecord.nickname
+                    };
+                }
+                // 同一IP同一昵称，允许通过
+                return { allowed: true };
+            }
+            
+            // 检查这个昵称是否被其他IP使用
+            for (const [ip, data] of Object.entries(ipRecords)) {
+                if (data.roundId === currentRoundId && data.nickname === nickname && ip !== currentIP) {
+                    return {
+                        allowed: false,
+                        message: `嘿嘿，"${nickname}"已经被别人抢先用了！换个独特的昵称吧～`,
+                        existingNickname: data.nickname
+                    };
+                }
+            }
+            
+            return { allowed: true };
+        }
+        
+        function bindIPToNickname(nickname) {
+            const ipRecords = getIPRecords();
+            ipRecords[getClientIP()] = {
+                nickname: nickname,
+                roundId: getCurrentRound().id,
+                timestamp: Date.now()
+            };
+            setStorage(CONFIG.STORAGE_KEYS.IP_RECORDS, ipRecords);
+        }
+        
+        // ==================== 活动轮次管理 ====================
+        function getCurrentRound() {
+            const round = getStorage(CONFIG.STORAGE_KEYS.ROUND);
+            if (!round) {
+                // 默认设置：本周一0点到周日23:59
+                const now = new Date();
+                const startOfWeek = new Date(now);
+                startOfWeek.setDate(now.getDate() - now.getDay() + 1);
+                startOfWeek.setHours(0, 0, 0, 0);
+                
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(startOfWeek.getDate() + 6);
+                endOfWeek.setHours(23, 59, 59, 999);
+                
+                return {
+                    id: 'round_' + startOfWeek.toISOString().split('T')[0],
+                    startTime: startOfWeek.getTime(),
+                    endTime: endOfWeek.getTime(),
+                    isActive: true
+                };
+            }
+            return round;
+        }
+        
+        function saveRound(round) {
+            setStorage(CONFIG.STORAGE_KEYS.ROUND, round);
+        }
+        
+        function isRoundActive() {
+            const round = getCurrentRound();
+            const now = Date.now();
+            return round.isActive && now >= round.startTime && now <= round.endTime;
+        }
+        
+        function getRoundTimeRemaining() {
+            const round = getCurrentRound();
+            const now = Date.now();
+            if (now > round.endTime) return 0;
+            return round.endTime - now;
+        }
+        
+        function formatTimeRemaining(ms) {
+            if (ms <= 0) return '已结束';
+            const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((ms % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+            
+            if (days > 0) return `${days}天${hours}小时`;
+            if (hours > 0) return `${hours}小时${minutes}分钟`;
+            return `${minutes}分钟`;
+        }
+        
+        function formatDateTime(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleString('zh-CN', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        // ==================== HTML 转义 ====================
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // ==================== 页面初始化 ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            // 初始化云端同步（Firebase加载可能需要时间）
+            setTimeout(() => {
+                if (window.firebaseDB) {
+                    CloudSync.init();
+                    console.log('✅ Firebase已连接');
+                } else {
+                    console.log('⚠️ Firebase未加载，使用本地模式');
+                }
+            }, 1000);
+            
+            updateRoundInfo();
+            updateTopPlayers();
+            setInterval(updateRoundInfo, 60000); // 每分钟更新一次
+            
+            // 设置默认管理员密钥（如果未设置）- 加密存储
+            if (!localStorage.getItem(CONFIG.STORAGE_KEYS.ADMIN_KEY)) {
+                saveAdminKey(CONFIG.DEFAULT_ADMIN_KEY);
+            }
+            
+            // 回车键开始游戏
+            document.getElementById('nickname').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    startGame();
+                }
+            });
+        });
+        
+        // ==================== 活动信息显示 ====================
+        function updateRoundInfo() {
+            const round = getCurrentRound();
+            const roundInfo = document.getElementById('roundInfo');
+            const roundTime = document.getElementById('roundTime');
+            const roundCountdown = document.getElementById('roundCountdown');
+            const startBtn = document.getElementById('startBtn');
+            
+            const isActive = isRoundActive();
+            const now = Date.now();
+            
+            if (isActive) {
+                roundInfo.classList.remove('ended');
+                roundTime.textContent = `${formatDateTime(round.startTime)} - ${formatDateTime(round.endTime)}`;
+                roundCountdown.textContent = `⏰ 剩余时间：${formatTimeRemaining(getRoundTimeRemaining())}`;
+                startBtn.disabled = false;
+                startBtn.textContent = '开始挑战';
+            } else if (now < round.startTime) {
+                roundInfo.classList.add('ended');
+                roundTime.textContent = `${formatDateTime(round.startTime)} - ${formatDateTime(round.endTime)}`;
+                roundCountdown.textContent = `⏳ 还未开始，敬请期待！`;
+                startBtn.disabled = true;
+                startBtn.textContent = '活动未开始';
+            } else {
+                roundInfo.classList.add('ended');
+                roundTime.textContent = `${formatDateTime(round.startTime)} - ${formatDateTime(round.endTime)}`;
+                roundCountdown.textContent = `🔒 本轮已结束，下周再来吧！`;
+                startBtn.disabled = true;
+                startBtn.textContent = '本轮已结束';
+            }
+        }
+        
+        // ==================== TOP 3 显示 ====================
+        async function updateTopPlayers() {
+            const container = document.getElementById('topPlayersList');
+            
+            try {
+                // 优先从云端获取
+                const leaderboard = await CloudSync.getLeaderboard(3);
+                
+                if (leaderboard.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; color: #999;">本周暂无数据，快来抢第一！</div>';
+                } else {
+                    container.innerHTML = leaderboard.map((p, i) => `
+                        <div class="top-player-item">
+                            <span class="top-player-rank">${i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</span>
+                            <span class="top-player-name">${escapeHtml(p.nickname)}</span>
+                            <span class="top-player-score">${p.bestScore || p.bestScore}题</span>
+                        </div>
+                    `).join('');
+                }
+            } catch (e) {
+                console.error('获取TOP3失败:', e);
+                // 降级到本地数据
+                const records = getPlayerRecords();
+                const currentRoundId = getCurrentRound().id;
+                
+                const leaderboard = [];
+                for (const [nickname, data] of Object.entries(records)) {
+                    const roundAttempts = data.attempts.filter(a => a.roundId === currentRoundId);
+                    if (roundAttempts.length > 0) {
+                        const bestScore = Math.max(...roundAttempts.map(a => a.score));
+                        leaderboard.push({ nickname, bestScore });
+                    }
+                }
+                
+                leaderboard.sort((a, b) => b.bestScore - a.bestScore);
+                const top3 = leaderboard.slice(0, 3);
+                
+                if (top3.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; color: #999;">本周暂无数据，快来抢第一！</div>';
+                } else {
+                    container.innerHTML = top3.map((p, i) => `
+                        <div class="top-player-item">
+                            <span class="top-player-rank">${i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</span>
+                            <span class="top-player-name">${escapeHtml(p.nickname)}</span>
+                            <span class="top-player-score">${p.bestScore}题</span>
+                        </div>
+                    `).join('');
+                }
+            }
+        }
+        }
+        
+        // ==================== 玩家尝试次数显示 ====================
+        function updatePlayerAttemptsInfo() {
+            const nickname = document.getElementById('nickname').value.trim();
+            const infoDiv = document.getElementById('playerAttemptsInfo');
+            
+            if (!nickname) {
+                infoDiv.innerHTML = '';
+                return;
+            }
+            
+            const attempts = getPlayerAttempts(nickname);
+            const used = attempts.length;
+            const remaining = CONFIG.MAX_ATTEMPTS - used;
+            
+            if (used > 0) {
+                const bestScore = Math.max(...attempts.map(a => a.score));
+                infoDiv.innerHTML = `
+                    <div class="attempts-info">
+                        <div>昵称：${escapeHtml(nickname)}</div>
+                        <div>已玩 <span class="used">${used}</span> 次，剩余 <span class="remaining">${remaining}</span> 次</div>
+                        <div>本周最佳：${bestScore}题</div>
+                    </div>
+                `;
+            } else {
+                infoDiv.innerHTML = `
+                    <div class="attempts-info">
+                        <div>昵称：${escapeHtml(nickname)}</div>
+                        <div><span class="remaining">还有3次机会</span></div>
+                    </div>
+                `;
+            }
+        }
+        
+        document.getElementById('nickname').addEventListener('input', updatePlayerAttemptsInfo);
+        
+        // ==================== 开始游戏 ====================
+        function startGame() {
+            if (!isRoundActive()) {
+                alert('本轮活动已结束或未开始，无法答题！');
+                return;
+            }
+            
+            const nickname = document.getElementById('nickname').value.trim();
+            const errorDiv = document.getElementById('nicknameError');
+            
+            if (!nickname) {
+                errorDiv.textContent = '请输入昵称';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+            
+            if (nickname.length < 2 || nickname.length > 20) {
+                errorDiv.textContent = '昵称需要在2-20个字符之间';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+            
+            // IP限制检查
+            const ipCheck = checkIPLimit(nickname);
+            if (!ipCheck.allowed) {
+                errorDiv.textContent = ipCheck.message;
+                errorDiv.classList.remove('hidden');
+                if (ipCheck.existingNickname) {
+                    document.getElementById('nickname').value = ipCheck.existingNickname;
+                    updatePlayerAttemptsInfo();
+                }
+                return;
+            }
+            
+            // 检查次数
+            const attempts = getPlayerAttempts(nickname);
+            if (attempts.length >= CONFIG.MAX_ATTEMPTS) {
+                errorDiv.textContent = `本周3次机会已用完，下周再来吧！你的最佳成绩：${Math.max(...attempts.map(a => a.score))}题`;
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+            
+            // 绑定IP
+            bindIPToNickname(nickname);
+            
+            gameState.currentNickname = nickname;
+            gameState.currentStreak = 0;
+            gameState.currentQuestionNum = 0;
+            gameState.usedQuestions = [];
+            gameState.isProcessing = false;
+            gameState.totalAnswerTime = 0;
+            gameState.lastAnswerTime = 0;
+            
+            errorDiv.classList.add('hidden');
+            document.getElementById('startScreen').classList.remove('active');
+            document.getElementById('gameScreen').classList.add('active');
+            
+            nextQuestion();
+        }
+        
+        // ==================== 下一题 ====================
+        function nextQuestion() {
+            if (gameState.isProcessing) return;
+            gameState.isProcessing = true;
+            
+            gameState.currentQuestionNum++;
+            const questions = getQuestions();
+            
+            // 获取可用题目
+            let availableIndices = questions.map((_, i) => i).filter(i => !gameState.usedQuestions.includes(i));
+            
+            // 如果可用题目不足，重置已用题目池
+            if (availableIndices.length < 10) {
+                const recentQuestions = gameState.usedQuestions.slice(-10);
+                gameState.usedQuestions = recentQuestions;
+                availableIndices = questions.map((_, i) => i).filter(i => !gameState.usedQuestions.includes(i));
+            }
+            
+            const randomIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+            gameState.usedQuestions.push(randomIndex);
+            gameState.currentQuestion = questions[randomIndex];
+            gameState.questionStartTime = Date.now();
+            
+            // 更新UI
+            document.getElementById('streakCount').textContent = gameState.currentStreak;
+            document.getElementById('questionNumber').textContent = gameState.currentQuestionNum;
+            document.getElementById('questionText').textContent = gameState.currentQuestion.question;
+            
+            // 显示击败百分比
+            updateBeatPercentage();
+            
+            // 里程碑提示
+            checkMilestone();
+            
+            const optionsContainer = document.getElementById('optionsContainer');
+            optionsContainer.innerHTML = '';
+            
+            gameState.currentQuestion.options.forEach((option, index) => {
+                const optionBtn = document.createElement('button');
+                optionBtn.className = 'option';
+                optionBtn.innerHTML = `<span>${String.fromCharCode(65 + index)}. ${escapeHtml(option)}</span>`;
+                optionBtn.onclick = () => selectOption(index, optionBtn);
+                optionsContainer.appendChild(optionBtn);
+            });
+            
+            gameState.isProcessing = false;
+            startTimer();
+        }
+        
+        // ==================== 击败百分比 ====================
+        function updateBeatPercentage() {
+            const records = getPlayerRecords();
+            const currentRoundId = getCurrentRound().id;
+            
+            // 计算当前分数击败了多少玩家
+            let totalPlayers = 0;
+            let beatenPlayers = 0;
+            
+            for (const data of Object.values(records)) {
+                const roundAttempts = data.attempts.filter(a => a.roundId === currentRoundId);
+                if (roundAttempts.length > 0) {
+                    totalPlayers++;
+                    const bestScore = Math.max(...roundAttempts.map(a => a.score));
+                    if (gameState.currentStreak > bestScore) {
+                        beatenPlayers++;
+                    }
+                }
+            }
+            
+            const beatDiv = document.getElementById('beatPercentage');
+            if (totalPlayers > 0 && gameState.currentStreak > 0) {
+                const percentage = Math.round((beatenPlayers / totalPlayers) * 100);
+                beatDiv.textContent = `🎉 你已击败 ${percentage}% 的玩家！`;
+                beatDiv.classList.remove('hidden');
+            } else {
+                beatDiv.classList.add('hidden');
+            }
+        }
+        
+        // ==================== 里程碑 ====================
+        function checkMilestone() {
+            const milestones = [5, 10, 15, 20, 30, 50];
+            const milestoneDiv = document.getElementById('milestone');
+            
+            if (milestones.includes(gameState.currentStreak)) {
+                const messages = {
+                    5: '🔥 5连对！保持节奏！',
+                    10: '🌟 10连对！太厉害了！',
+                    15: '⚡ 15连对！势不可挡！',
+                    20: '🚀 20连对！接近大神！',
+                    30: '👑 30连对！你是魔鬼吗！',
+                    50: '🏆 50连对！帕鲁之神！'
+                };
+                milestoneDiv.textContent = messages[gameState.currentStreak];
+                milestoneDiv.classList.remove('hidden');
+                
+                setTimeout(() => {
+                    milestoneDiv.classList.add('hidden');
+                }, 3000);
+            } else {
+                milestoneDiv.classList.add('hidden');
+            }
+        }
+        
+        // ==================== 计时器 ====================
+        function startTimer() {
+            gameState.timeLeft = CONFIG.QUESTION_TIME;
+            updateTimerUI();
+            
+            if (gameState.timer) clearInterval(gameState.timer);
+            
+            gameState.timer = setInterval(() => {
+                gameState.timeLeft--;
+                updateTimerUI();
+                
+                if (gameState.timeLeft <= 0) {
+                    clearInterval(gameState.timer);
+                    endGame();
+                }
+            }, 1000);
+        }
+        
+        function updateTimerUI() {
+            const timerEl = document.getElementById('timer');
+            const timeLeftEl = document.getElementById('timeLeft');
+            const timerBar = document.getElementById('timerBar');
+            
+            timeLeftEl.textContent = gameState.timeLeft;
+            
+            const percentage = (gameState.timeLeft / CONFIG.QUESTION_TIME) * 100;
+            timerBar.style.width = percentage + '%';
+            
+            timerEl.classList.remove('warning', 'danger');
+            if (gameState.timeLeft <= 5) {
+                timerEl.classList.add('danger');
+            } else if (gameState.timeLeft <= 10) {
+                timerEl.classList.add('warning');
+            }
+        }
+        
+        // ==================== 选择答案 ====================
+        function selectOption(index, btnElement) {
+            if (gameState.isProcessing) return;
+            
+            const answerTime = Date.now() - gameState.questionStartTime;
+            
+            // 防作弊：检查答题速度
+            if (answerTime < CONFIG.MIN_ANSWER_TIME) {
+                console.warn('答题过快，疑似作弊');
+            }
+            
+            gameState.totalAnswerTime += answerTime;
+            gameState.lastAnswerTime = answerTime;
+            
+            clearInterval(gameState.timer);
+            gameState.isProcessing = true;
+            
+            const allOptions = document.querySelectorAll('.option');
+            allOptions.forEach(opt => opt.classList.add('disabled'));
+            
+            if (index === gameState.currentQuestion.correct) {
+                // 答对
+                gameState.currentStreak++;
+                showFeedback('✓', '#28a745');
+                
+                setTimeout(() => {
+                    gameState.isProcessing = false;
+                    nextQuestion();
+                }, 600);
+            } else {
+                // 答错 - 不显示正确答案，直接结束
+                btnElement.classList.add('selected-wrong');
+                showFeedback('✗', '#dc3545');
+                
+                setTimeout(() => {
+                    endGame();
+                }, 800);
+            }
+        }
+        
+        function showFeedback(text, color) {
+            const overlay = document.getElementById('feedbackOverlay');
+            overlay.textContent = text;
+            overlay.style.color = color;
+            overlay.classList.add('show');
+            
+            setTimeout(() => {
+                overlay.classList.remove('show');
+            }, 600);
+        }
+        
+        // ==================== 结束游戏 ====================
+        function endGame() {
+            clearInterval(gameState.timer);
+            gameState.isProcessing = false;
+            
+            // 保存成绩
+            savePlayerRecord(gameState.currentNickname, gameState.currentStreak);
+            
+            // 显示结果
+            document.getElementById('gameScreen').classList.remove('active');
+            document.getElementById('endScreen').classList.add('active');
+            
+            document.getElementById('finalScore').textContent = gameState.currentStreak;
+            
+            // 评级
+            let rank = '';
+            if (gameState.currentStreak >= 50) rank = '🏆 帕鲁大师';
+            else if (gameState.currentStreak >= 30) rank = '🥇 资深训练家';
+            else if (gameState.currentStreak >= 15) rank = '🥈 合格训练家';
+            else if (gameState.currentStreak >= 5) rank = '🥉 新手训练家';
+            else rank = '🌱 见习训练家';
+            
+            document.getElementById('rankBadge').textContent = rank;
+            
+            // 显示击败百分比
+            const records = getPlayerRecords();
+            const currentRoundId = getCurrentRound().id;
+            let totalPlayers = 0;
+            let beatenPlayers = 0;
+            
+            for (const data of Object.values(records)) {
+                const roundAttempts = data.attempts.filter(a => a.roundId === currentRoundId);
+                if (roundAttempts.length > 0) {
+                    totalPlayers++;
+                    const bestScore = Math.max(...roundAttempts.map(a => a.score));
+                    if (gameState.currentStreak >= bestScore) {
+                        beatenPlayers++;
+                    }
+                }
+            }
+            
+            const beatFinalDiv = document.getElementById('beatFinalPercentage');
+            if (totalPlayers > 0) {
+                const percentage = Math.round((beatenPlayers / totalPlayers) * 100);
+                beatFinalDiv.innerHTML = `<div style="margin-top: 10px; color: #28a745;">🎉 本周排名击败 ${percentage}% 的玩家！</div>`;
+            }
+            
+            // 鼓励语
+            const attempts = getPlayerAttempts(gameState.currentNickname);
+            const usedCount = attempts.length;
+            const remainingCount = CONFIG.MAX_ATTEMPTS - usedCount;
+            const bestScore = Math.max(...attempts.map(a => a.score));
+            
+            const encouragementDiv = document.getElementById('encouragement');
+            
+            if (remainingCount > 0) {
+                // 还有次数，鼓励再来
+                const encouragements = [
+                    `差一点点就突破自己了！还有${remainingCount}次机会，再来一局创造新纪录吧！💪`,
+                    `好可惜！但${gameState.currentStreak}题也很棒了！休息一下，再来挑战？🔥`,
+                    `别气馁！失败是成功之母，还剩${remainingCount}次机会，证明你的实力！⚡`,
+                    `差一点就成为本周传奇了！调整状态，再来一局吧！🎯`
+                ];
+                encouragementDiv.textContent = encouragements[Math.floor(Math.random() * encouragements.length)];
+                encouragementDiv.classList.remove('next-week');
+            } else {
+                // 没次数了，鼓励下周再战
+                encouragementDiv.innerHTML = `
+                    🎉 本周挑战完成！你的最佳成绩是 <strong>${bestScore}题</strong>！<br>
+                    无论结果如何，你已经是勇敢的挑战者了！下周见！👋
+                `;
+                encouragementDiv.classList.add('next-week');
+            }
+            
+            // 历史记录
+            let historyHTML = `<h4>📊 本周挑战记录（${usedCount}/${CONFIG.MAX_ATTEMPTS}次）</h4>`;
+            attempts.forEach((attempt, i) => {
+                const isBest = attempt.score === bestScore;
+                historyHTML += `
+                    <div class="attempt-row ${isBest ? 'best' : ''}">
+                        <span>第${i + 1}次</span>
+                        <span>${attempt.score}题 ${isBest ? '👑 最佳' : ''}</span>
+                    </div>
+                `;
+            });
+            historyHTML += `<div style="margin-top: 10px; padding-top: 10px; border-top: 2px solid #667eea;"><strong>本周最佳：${bestScore}题</strong></div>`;
+            
+            document.getElementById('attemptsHistory').innerHTML = historyHTML;
+            
+            // 显示/隐藏再玩按钮
+            const playAgainBtn = document.getElementById('playAgainBtn');
+            if (remainingCount <= 0) {
+                playAgainBtn.style.display = 'none';
+            } else {
+                playAgainBtn.style.display = 'inline-block';
+                playAgainBtn.textContent = `再玩一次（还剩${remainingCount}次）`;
+            }
+            
+            // 更新TOP3
+            updateTopPlayers();
+        }
+        
+        // ==================== 分享文案 ====================
+        function copyShareText() {
+            const attempts = getPlayerAttempts(gameState.currentNickname);
+            const bestScore = Math.max(...attempts.map(a => a.score));
+            
+            const shareText = `🏆 幻兽帕鲁知识竞赛\n` +
+                `昵称：${gameState.currentNickname}\n` +
+                `本周最佳：${bestScore}题\n` +
+                `快来挑战我吧！`;
+            
+            navigator.clipboard.writeText(shareText).then(() => {
+                alert('分享文案已复制！快去发给小伙伴吧～');
+            });
+        }
+        
+        // ==================== 再玩一次 ====================
+        function playAgain() {
+            const attempts = getPlayerAttempts(gameState.currentNickname);
+            if (attempts.length >= CONFIG.MAX_ATTEMPTS) {
+                alert('本周3次机会已用完，下周再来吧！');
+                return;
+            }
+            
+            if (!isRoundActive()) {
+                alert('本轮活动已结束！');
+                return;
+            }
+            
+            gameState.currentStreak = 0;
+            gameState.currentQuestionNum = 0;
+            gameState.usedQuestions = [];
+            gameState.isProcessing = false;
+            document.getElementById('endScreen').classList.remove('active');
+            document.getElementById('gameScreen').classList.add('active');
+            nextQuestion();
+        }
+        
+        // ==================== 查看排行榜 ====================
+        function showLeaderboard() {
+            document.getElementById('startScreen').classList.remove('active');
+            document.getElementById('endScreen').classList.remove('active');
+            document.getElementById('gameScreen').classList.remove('active');
+            document.getElementById('recordsScreen').classList.remove('active');
+            document.getElementById('leaderboardScreen').classList.add('active');
+            
+            renderLeaderboard();
+        }
+        
+        function renderLeaderboard() {
+            const myNickname = gameState.currentNickname || document.getElementById('nickname').value.trim();
+            
+            // 从云端获取排行榜
+            CloudSync.getLeaderboard(50).then(leaderboard => {
+                // 更新参与人数
+                document.getElementById('participantCount').textContent = leaderboard.length;
+                
+                // 查找我的排名
+                const myRank = leaderboard.findIndex(p => p.nickname === myNickname);
+                document.getElementById('myBestRank').textContent = myRank >= 0 ? `第${myRank + 1}名` : '未上榜';
+                
+                let html = '';
+                if (leaderboard.length === 0) {
+                    html = '<div style="text-align: center; color: #666; padding: 30px;">本周暂无数据，快来抢第一！</div>';
+                } else {
+                    html = `
+                        <table class="leaderboard-table">
+                            <thead>
+                                <tr>
+                                    <th>排名</th>
+                                <th>昵称</th>
+                                <th>最高分</th>
+                                <th>次数</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                leaderboard.forEach((player, i) => {
+                    const rankEmoji = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
+                    const isMe = player.nickname === myNickname;
+                    const attempts = player.attempts?.length || player.attempts || 1;
+                    html += `
+                        <tr style="${isMe ? 'background: #e3f2fd;' : ''}">
+                            <td>${rankEmoji}</td>
+                            <td>${escapeHtml(player.nickname)} ${isMe ? '(你)' : ''}</td>
+                            <td><strong>${player.bestScore}</strong></td>
+                            <td>${attempts}/3</td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table>';
+            }
+            
+            document.getElementById('leaderboardContent').innerHTML = html;
+        }).catch(err => {
+            console.error('获取排行榜失败:', err);
+            // 降级到本地数据
+            renderLocalLeaderboard();
+        });
+        }
+        
+        // 本地排行榜（备用）
+        function renderLocalLeaderboard() {
+            const records = getPlayerRecords();
+            const currentRoundId = getCurrentRound().id;
+            const myNickname = gameState.currentNickname || document.getElementById('nickname').value.trim();
+            
+            const leaderboard = [];
+            for (const [nickname, data] of Object.entries(records)) {
+                const roundAttempts = data.attempts?.filter(a => a.roundId === currentRoundId) || [];
+                if (roundAttempts.length > 0) {
+                    const bestScore = Math.max(...roundAttempts.map(a => a.score));
+                    leaderboard.push({ nickname, bestScore, attempts: roundAttempts.length });
+                }
+            }
+            
+            leaderboard.sort((a, b) => b.bestScore - a.bestScore);
+            
+            // 更新参与人数
+            document.getElementById('participantCount').textContent = leaderboard.length;
+            
+            // 查找我的排名
+            const myRank = leaderboard.findIndex(p => p.nickname === myNickname);
+            document.getElementById('myBestRank').textContent = myRank >= 0 ? `第${myRank + 1}名` : '未上榜';
+            
+            let html = '';
+            if (leaderboard.length === 0) {
+                html = '<div style="text-align: center; color: #666; padding: 30px;">本周暂无数据，快来抢第一！</div>';
+            } else {
+                html = `
+                    <table class="leaderboard-table">
+                        <thead>
+                            <tr>
+                                <th>排名</th>
+                                <th>昵称</th>
+                                <th>最高分</th>
+                                <th>次数</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                leaderboard.forEach((player, i) => {
+                    const rankEmoji = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}`;
+                    const isMe = player.nickname === myNickname;
+                    html += `
+                        <tr style="${isMe ? 'background: #e3f2fd;' : ''}">
+                            <td>${rankEmoji}</td>
+                            <td>${escapeHtml(player.nickname)} ${isMe ? '(你)' : ''}</td>
+                            <td><strong>${player.bestScore}</strong></td>
+                            <td>${player.attempts}/3</td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table>';
+            }
+            
+            document.getElementById('leaderboardContent').innerHTML = html;
+        }
+        
+        // ==================== 查看我的记录 ====================
+        function showMyRecords() {
+            const nickname = document.getElementById('nickname').value.trim();
+            
+            document.getElementById('startScreen').classList.remove('active');
+            document.getElementById('endScreen').classList.remove('active');
+            document.getElementById('gameScreen').classList.remove('active');
+            document.getElementById('leaderboardScreen').classList.remove('active');
+            document.getElementById('recordsScreen').classList.add('active');
+            
+            renderMyRecords(nickname);
+        }
+        
+        function renderMyRecords(nickname) {
+            const container = document.getElementById('myRecordsContent');
+            
+            if (!nickname) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: #666; padding: 30px;">
+                        <p>请输入昵称才能查看记录哦～</p>
+                        <button class="btn" onclick="backToHome()">返回主页</button>
+                    </div>
+                `;
+                return;
+            }
+            
+            const records = getPlayerRecords();
+            const playerData = records[nickname];
+            
+            if (!playerData || playerData.attempts.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align: center; color: #666; padding: 30px;">
+                        <p>${escapeHtml(nickname)} 还没有挑战记录</p>
+                        <button class="btn" onclick="backToHome()">返回主页开始挑战</button>
+                    </div>
+                `;
+                return;
+            }
+            
+            const currentRoundId = getCurrentRound().id;
+            const currentRoundAttempts = playerData.attempts.filter(a => a.roundId === currentRoundId);
+            const historyAttempts = playerData.attempts.filter(a => a.roundId !== currentRoundId);
+            
+            let html = `<div class="admin-panel">
+                <h3>👤 ${escapeHtml(nickname)} 的挑战记录</h3>
+            `;
+            
+            // 本周记录
+            if (currentRoundAttempts.length > 0) {
+                const bestScore = Math.max(...currentRoundAttempts.map(a => a.score));
+                html += `<h4 style="margin: 15px 0; color: #667eea;">📅 本周挑战</h4>`;
+                html += `<div class="attempts-history">`;
+                currentRoundAttempts.forEach((attempt, i) => {
+                    const isBest = attempt.score === bestScore;
+                    html += `
+                        <div class="attempt-row ${isBest ? 'best' : ''}">
+                            <span>第${i + 1}次</span>
+                            <span>${attempt.score}题 ${isBest ? '👑 最佳' : ''}</span>
+                        </div>
+                    `;
+                });
+                html += `<div style="margin-top: 10px; padding-top: 10px; border-top: 2px solid #667eea;">`;
+                html += `<strong>本周最佳：${bestScore}题</strong>`;
+                html += `</div></div>`;
+            } else {
+                html += `<div class="warning-box">本周还没有挑战记录，快来参加吧！</div>`;
+            }
+            
+            // 历史记录
+            if (historyAttempts.length > 0) {
+                html += `<h4 style="margin: 15px 0; color: #666;">📚 历史记录</h4>`;
+                html += `<div class="attempts-history" style="background: #f5f5f5;">`;
+                
+                // 按轮次分组
+                const byRound = {};
+                historyAttempts.forEach(a => {
+                    if (!byRound[a.roundId]) byRound[a.roundId] = [];
+                    byRound[a.roundId].push(a);
+                });
+                
+                Object.entries(byRound).forEach(([roundId, attempts]) => {
+                    const bestScore = Math.max(...attempts.map(a => a.score));
+                    html += `<div style="margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #ddd;">`;
+                    html += `<div style="font-size: 0.9em; color: #888;">${roundId}</div>`;
+                    html += `<div>最佳：${bestScore}题 (${attempts.length}次挑战)</div>`;
+                    html += `</div>`;
+                });
+                
+                html += `</div>`;
+            }
+            
+            html += `</div>`;
+            container.innerHTML = html;
+        }
+        
+        // ==================== 返回主页 ====================
+        function backToHome() {
+            document.getElementById('leaderboardScreen').classList.remove('active');
+            document.getElementById('endScreen').classList.remove('active');
+            document.getElementById('recordsScreen').classList.remove('active');
+            document.getElementById('adminScreen').classList.remove('active');
+            document.getElementById('startScreen').classList.add('active');
+            updatePlayerAttemptsInfo();
+            updateTopPlayers();
+        }
+        
+        // ==================== 管理员功能 ====================
+        function showAdminLogin() {
+            document.getElementById('adminLoginModal').classList.add('active');
+            document.getElementById('adminKey').value = '';
+            document.getElementById('adminKeyError').classList.add('hidden');
+            document.getElementById('adminKey').focus();
+        }
+        
+        function hideAdminLogin() {
+            document.getElementById('adminLoginModal').classList.remove('active');
+        }
+        
+        function loginAdmin() {
+            const key = document.getElementById('adminKey').value.trim();
+            
+            if (verifyAdminKey(key)) {
+                gameState.isAdmin = true;
+                hideAdminLogin();
+                showAdminPanel();
+            } else {
+                document.getElementById('adminKeyError').classList.remove('hidden');
+            }
+        }
+        
+        function showAdminPanel() {
+            document.getElementById('startScreen').classList.remove('active');
+            document.getElementById('adminScreen').classList.add('active');
+            
+            // 加载活动设置
+            const round = getCurrentRound();
+            const startInput = document.getElementById('roundStartTime');
+            const endInput = document.getElementById('roundEndTime');
+            
+            if (startInput) {
+                startInput.value = new Date(round.startTime).toISOString().slice(0, 16);
+            }
+            if (endInput) {
+                endInput.value = new Date(round.endTime).toISOString().slice(0, 16);
+            }
+            
+            // 刷新数据
+            refreshAdminOverview();
+        }
+        
+        function logoutAdmin() {
+            gameState.isAdmin = false;
+            backToHome();
+        }
+        
+        function switchAdminTab(tab) {
+            document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.admin-content').forEach(c => c.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById('admin' + tab.charAt(0).toUpperCase() + tab.slice(1)).classList.add('active');
+            
+            if (tab === 'overview') refreshAdminOverview();
+            if (tab === 'players') refreshAdminPlayers();
+            if (tab === 'questions') refreshAdminQuestions();
+        }
+        
+        function refreshAdminOverview() {
+            const records = getPlayerRecords();
+            const currentRoundId = getCurrentRound().id;
+            
+            let totalPlayers = 0;
+            let totalAttempts = 0;
+            let allScores = [];
+            let cheatAlerts = [];
+            
+            for (const [nickname, data] of Object.entries(records)) {
+                const roundAttempts = data.attempts.filter(a => a.roundId === currentRoundId);
+                if (roundAttempts.length > 0) {
+                    totalPlayers++;
+                    totalAttempts += roundAttempts.length;
+                    roundAttempts.forEach(a => {
+                        allScores.push(a.score);
+                        
+                        // 检测异常：答题速度过快
+                        if (a.answerTimes) {
+                            const avgTime = a.answerTimes.reduce((sum, t) => sum + t, 0) / a.answerTimes.length;
+                            if (avgTime < CONFIG.MIN_ANSWER_TIME) {
+                                cheatAlerts.push({
+                                    nickname,
+                                    reason: `平均答题时间过短 (${avgTime.toFixed(0)}ms)`,
+                                    score: a.score
+                                });
+                            }
+                        }
+                    });
+                }
+            }
+            
+            document.getElementById('statTotalPlayers').textContent = totalPlayers;
+            document.getElementById('statTotalAttempts').textContent = totalAttempts;
+            document.getElementById('statAvgScore').textContent = allScores.length > 0 
+                ? (allScores.reduce((a, b) => a + b, 0) / allScores.length).toFixed(1) 
+                : '0';
+            document.getElementById('statHighestScore').textContent = allScores.length > 0 
+                ? Math.max(...allScores) 
+                : '0';
+            
+            const cheatDiv = document.getElementById('cheatAlerts');
+            if (cheatAlerts.length > 0) {
+                cheatDiv.innerHTML = cheatAlerts.map(c => `
+                    <div class="cheat-alert">
+                        <strong>${escapeHtml(c.nickname)}</strong> - ${c.reason} - ${c.score}题
+                    </div>
+                `).join('');
+            } else {
+                cheatDiv.innerHTML = '<div style="color: #28a745;">✓ 暂未发现异常</div>';
+            }
+        }
+        
+        function refreshAdminPlayers() {
+            const records = getPlayerRecords();
+            const currentRoundId = getCurrentRound().id;
+            
+            const players = [];
+            for (const [nickname, data] of Object.entries(records)) {
+                const roundAttempts = data.attempts.filter(a => a.roundId === currentRoundId);
+                if (roundAttempts.length > 0) {
+                    const bestScore = Math.max(...roundAttempts.map(a => a.score));
+                    players.push({
+                        nickname,
+                        attempts: roundAttempts.length,
+                        bestScore,
+                        avgScore: (roundAttempts.reduce((sum, a) => sum + a.score, 0) / roundAttempts.length).toFixed(1)
+                    });
+                }
+            }
+            
+            players.sort((a, b) => b.bestScore - a.bestScore);
+            
+            const container = document.getElementById('adminPlayersList');
+            if (players.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: #666;">暂无玩家数据</div>';
+                return;
+            }
+            
+            container.innerHTML = `
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>昵称</th>
+                            <th>最高分</th>
+                            <th>次数</th>
+                            <th>平均分</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${players.map(p => `
+                            <tr>
+                                <td>${escapeHtml(p.nickname)}</td>
+                                <td>${p.bestScore}</td>
+                                <td>${p.attempts}/3</td>
+                                <td>${p.avgScore}</td>
+                                <td><button class="btn btn-sm btn-danger" onclick="resetPlayer('${p.nickname}')">重置</button></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+        
+        function resetPlayer(nickname) {
+            if (!confirm(`确定要重置玩家 "${nickname}" 的所有数据吗？此操作不可恢复！`)) {
+                return;
+            }
+            
+            const records = getPlayerRecords();
+            delete records[nickname];
+            setStorage(CONFIG.STORAGE_KEYS.RECORDS, records);
+            
+            // 同时清理IP绑定
+            const ipRecords = getIPRecords();
+            for (const [ip, data] of Object.entries(ipRecords)) {
+                if (data.nickname === nickname) {
+                    delete ipRecords[ip];
+                }
+            }
+            setStorage(CONFIG.STORAGE_KEYS.IP_RECORDS, ipRecords);
+            
+            alert('已重置玩家数据');
+            refreshAdminPlayers();
+            refreshAdminOverview();
+        }
+        
+        function refreshAdminQuestions() {
+            const questions = getQuestions();
+            const container = document.getElementById('questionsList');
+            
+            container.innerHTML = `
+                <div style="margin-bottom: 15px;">当前共有 ${questions.length} 道题目</div>
+                <div style="max-height: 400px; overflow-y: auto;">
+                    ${questions.map((q, i) => `
+                        <div style="padding: 10px; border-bottom: 1px solid #eee;">
+                            <div><strong>${i + 1}. ${escapeHtml(q.question)}</strong></div>
+                            <div style="color: #666; font-size: 0.9em;">
+                                ${q.options.map((opt, idx) => `
+                                    ${String.fromCharCode(65 + idx)}. ${escapeHtml(opt)} ${idx === q.correct ? '✓' : ''}
+                                `).join(' | ')}
+                            </div>
+                            <div style="margin-top: 5px;">
+                                <button class="btn btn-sm btn-danger" onclick="deleteQuestion(${i})">删除</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        function deleteQuestion(index) {
+            if (!confirm('确定要删除这道题目吗？')) return;
+            
+            const questions = getQuestions();
+            questions.splice(index, 1);
+            saveQuestions(questions);
+            refreshAdminQuestions();
+        }
+        
+        function addNewQuestion() {
+            const question = prompt('请输入题目：');
+            if (!question) return;
+            
+            const optionsText = prompt('请输入选项，用英文逗号分隔：');
+            if (!optionsText) return;
+            
+            const options = optionsText.split(',').map(o => o.trim());
+            if (options.length < 2) {
+                alert('至少需要2个选项');
+                return;
+            }
+            
+            const correctStr = prompt(`正确答案序号（0-${options.length - 1}）：`);
+            const correct = parseInt(correctStr);
+            
+            if (isNaN(correct) || correct < 0 || correct >= options.length) {
+                alert('无效的序号');
+                return;
+            }
+            
+            const questions = getQuestions();
+            questions.push({ question, options, correct });
+            saveQuestions(questions);
+            
+            alert('题目添加成功！');
+            refreshAdminQuestions();
+        }
+        
+        function resetToDefaultQuestions() {
+            if (!confirm('确定要恢复默认题库吗？这将删除所有自定义题目！')) return;
+            
+            saveQuestions(DEFAULT_QUESTIONS);
+            alert('已恢复默认题库');
+            refreshAdminQuestions();
+        }
+        
+        function saveRoundSettings() {
+            const startTime = new Date(document.getElementById('roundStartTime').value).getTime();
+            const endTime = new Date(document.getElementById('roundEndTime').value).getTime();
+            
+            if (isNaN(startTime) || isNaN(endTime)) {
+                alert('请输入有效的时间');
+                return;
+            }
+            
+            if (endTime <= startTime) {
+                alert('结束时间必须晚于开始时间');
+                return;
+            }
+            
+            const round = {
+                id: 'round_' + new Date(startTime).toISOString().split('T')[0],
+                startTime,
+                endTime,
+                isActive: true
+            };
+            
+            saveRound(round);
+            alert('活动设置已保存');
+            updateRoundInfo();
+        }
+        
+        function endRoundNow() {
+            if (!confirm('确定要立即结束本轮活动吗？玩家将无法继续答题！')) return;
+            
+            const round = getCurrentRound();
+            round.endTime = Date.now() - 1000;
+            round.isActive = false;
+            saveRound(round);
+            
+            alert('本轮活动已结束');
+            updateRoundInfo();
+        }
+        
+        function exportRoundData() {
+            const records = getPlayerRecords();
+            const currentRoundId = getCurrentRound().id;
+            const round = getCurrentRound();
+            
+            let exportText = `【幻兽帕鲁知识竞赛 - 本轮数据】\n`;
+            exportText += `==================\n`;
+            exportText += `轮次：${currentRoundId}\n`;
+            exportText += `时间：${formatDateTime(round.startTime)} - ${formatDateTime(round.endTime)}\n`;
+            exportText += `导出时间：${new Date().toLocaleString()}\n\n`;
+            
+            const leaderboard = [];
+            for (const [nickname, data] of Object.entries(records)) {
+                const roundAttempts = data.attempts.filter(a => a.roundId === currentRoundId);
+                if (roundAttempts.length > 0) {
+                    const bestScore = Math.max(...roundAttempts.map(a => a.score));
+                    leaderboard.push({ nickname, bestScore, attempts: roundAttempts.length });
+                }
+            }
+            
+            leaderboard.sort((a, b) => b.bestScore - a.bestScore);
+            
+            exportText += `【排行榜】\n`;
+            leaderboard.forEach((p, i) => {
+                exportText += `${i + 1}. ${p.nickname} - ${p.bestScore}题 (${p.attempts}次)\n`;
+            });
+            
+            exportText += `\n【详细数据】\n`;
+            for (const [nickname, data] of Object.entries(records)) {
+                const roundAttempts = data.attempts.filter(a => a.roundId === currentRoundId);
+                if (roundAttempts.length > 0) {
+                    exportText += `\n${nickname}:\n`;
+                    roundAttempts.forEach((a, i) => {
+                        exportText += `  第${i + 1}次: ${a.score}题\n`;
+                    });
+                }
+            }
+            
+            document.getElementById('adminExportText').value = exportText;
+        }
+        
+        function exportAllHistory() {
+            const records = getPlayerRecords();
+            
+            let exportText = `【幻兽帕鲁知识竞赛 - 全部历史数据】\n`;
+            exportText += `==================\n`;
+            exportText += `导出时间：${new Date().toLocaleString()}\n\n`;
+            
+            // 按轮次分组
+            const byRound = {};
+            for (const [nickname, data] of Object.entries(records)) {
+                data.attempts.forEach(a => {
+                    if (!byRound[a.roundId]) byRound[a.roundId] = [];
+                    byRound[a.roundId].push({ nickname, ...a });
+                });
+            }
+            
+            Object.entries(byRound).sort().reverse().forEach(([roundId, attempts]) => {
+                exportText += `\n【${roundId}】\n`;
+                
+                // 该轮排行榜
+                const playerBest = {};
+                attempts.forEach(a => {
+                    if (!playerBest[a.nickname] || a.score > playerBest[a.nickname]) {
+                        playerBest[a.nickname] = a.score;
+                    }
+                });
+                
+                const sorted = Object.entries(playerBest).sort((a, b) => b[1] - a[1]);
+                sorted.forEach(([name, score], i) => {
+                    exportText += `${i + 1}. ${name} - ${score}题\n`;
+                });
+            });
+            
+            document.getElementById('adminExportText').value = exportText;
+        }
+        
+        function copyAdminExport() {
+            const textarea = document.getElementById('adminExportText');
+            if (!textarea.value) {
+                alert('请先导出数据');
+                return;
+            }
+            
+            navigator.clipboard.writeText(textarea.value).then(() => {
+                alert('数据已复制到剪贴板');
+            });
+        }
+    </script>
+</body>
+</html>
