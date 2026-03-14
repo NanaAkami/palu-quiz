@@ -1190,6 +1190,22 @@
             async adminLogout(token) {
                 const db = initFirebase();
                 await db.ref(`/admin/sessions/${token}`).remove();
+            },
+            
+            // 获取所有玩家记录（管理员）
+            async getAllPlayerRecords(token) {
+                if (!(await this.verifyAdminToken(token))) throw new Error('未授权');
+                const db = initFirebase();
+                const snapshot = await db.ref('/records').once('value');
+                return snapshot.val() || {};
+            },
+            
+            // 删除玩家记录（管理员）
+            async deletePlayerRecord(token, nickname) {
+                if (!(await this.verifyAdminToken(token))) throw new Error('未授权');
+                const db = initFirebase();
+                await db.ref(`/records/${nickname}`).remove();
+                return { success: true };
             }
         };
         
@@ -2539,132 +2555,147 @@
             if (tab === 'questions') refreshAdminQuestions();
         }
         
-        function refreshAdminOverview() {
-            const records = getPlayerRecords();
-            const currentRoundId = getCurrentRound().id;
+        async function refreshAdminOverview() {
+            if (!gameState.adminToken) return;
             
-            let totalPlayers = 0;
-            let totalAttempts = 0;
-            let allScores = [];
-            let cheatAlerts = [];
-            
-            for (const [nickname, data] of Object.entries(records)) {
-                const roundAttempts = data.attempts.filter(a => a.roundId === currentRoundId);
-                if (roundAttempts.length > 0) {
-                    totalPlayers++;
-                    totalAttempts += roundAttempts.length;
-                    roundAttempts.forEach(a => {
-                        allScores.push(a.score);
-                        
-                        // 检测异常：答题速度过快
-                        if (a.answerTimes) {
-                            const avgTime = a.answerTimes.reduce((sum, t) => sum + t, 0) / a.answerTimes.length;
-                            if (avgTime < CONFIG.MIN_ANSWER_TIME) {
-                                cheatAlerts.push({
-                                    nickname,
-                                    reason: `平均答题时间过短 (${avgTime.toFixed(0)}ms)`,
-                                    score: a.score
-                                });
+            try {
+                const records = await BackendAPI.getAllPlayerRecords(gameState.adminToken);
+                const currentRoundId = getCurrentRound().id;
+                
+                let totalPlayers = 0;
+                let totalAttempts = 0;
+                let allScores = [];
+                let cheatAlerts = [];
+                
+                for (const [nickname, data] of Object.entries(records)) {
+                    const roundAttempts = data.attempts ? data.attempts.filter(a => a.roundId === currentRoundId) : [];
+                    if (roundAttempts.length > 0) {
+                        totalPlayers++;
+                        totalAttempts += roundAttempts.length;
+                        roundAttempts.forEach(a => {
+                            allScores.push(a.score);
+                            
+                            // 检测异常：答题速度过快
+                            if (a.answerTimes) {
+                                const avgTime = a.answerTimes.reduce((sum, t) => sum + t, 0) / a.answerTimes.length;
+                                if (avgTime < CONFIG.MIN_ANSWER_TIME) {
+                                    cheatAlerts.push({
+                                        nickname,
+                                        reason: `平均答题时间过短 (${avgTime.toFixed(0)}ms)`,
+                                        score: a.score
+                                    });
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
                 }
-            }
-            
-            document.getElementById('statTotalPlayers').textContent = totalPlayers;
-            document.getElementById('statTotalAttempts').textContent = totalAttempts;
-            document.getElementById('statAvgScore').textContent = allScores.length > 0 
-                ? (allScores.reduce((a, b) => a + b, 0) / allScores.length).toFixed(1) 
-                : '0';
-            document.getElementById('statHighestScore').textContent = allScores.length > 0 
-                ? Math.max(...allScores) 
-                : '0';
-            
-            const cheatDiv = document.getElementById('cheatAlerts');
-            if (cheatAlerts.length > 0) {
-                cheatDiv.innerHTML = cheatAlerts.map(c => `
-                    <div class="cheat-alert">
-                        <strong>${escapeHtml(c.nickname)}</strong> - ${c.reason} - ${c.score}题
-                    </div>
-                `).join('');
-            } else {
-                cheatDiv.innerHTML = '<div style="color: #28a745;">✓ 暂未发现异常</div>';
+                
+                document.getElementById('statTotalPlayers').textContent = totalPlayers;
+                document.getElementById('statTotalAttempts').textContent = totalAttempts;
+                document.getElementById('statAvgScore').textContent = allScores.length > 0 
+                    ? (allScores.reduce((a, b) => a + b, 0) / allScores.length).toFixed(1) 
+                    : '0';
+                document.getElementById('statHighestScore').textContent = allScores.length > 0 
+                    ? Math.max(...allScores) 
+                    : '0';
+                
+                const cheatDiv = document.getElementById('cheatAlerts');
+                if (cheatAlerts.length > 0) {
+                    cheatDiv.innerHTML = cheatAlerts.map(c => `
+                        <div class="cheat-alert">
+                            <strong>${escapeHtml(c.nickname)}</strong> - ${c.reason} - ${c.score}题
+                        </div>
+                    `).join('');
+                } else {
+                    cheatDiv.innerHTML = '<div style="color: #28a745;">✓ 暂未发现异常</div>';
+                }
+            } catch (e) {
+                console.error('获取总览数据失败:', e);
             }
         }
         
-        function refreshAdminPlayers() {
-            const records = getPlayerRecords();
-            const currentRoundId = getCurrentRound().id;
+        async function refreshAdminPlayers() {
+            if (!gameState.adminToken) return;
             
-            const players = [];
-            for (const [nickname, data] of Object.entries(records)) {
-                const roundAttempts = data.attempts.filter(a => a.roundId === currentRoundId);
-                if (roundAttempts.length > 0) {
-                    const bestScore = Math.max(...roundAttempts.map(a => a.score));
-                    players.push({
-                        nickname,
-                        attempts: roundAttempts.length,
-                        bestScore,
-                        avgScore: (roundAttempts.reduce((sum, a) => sum + a.score, 0) / roundAttempts.length).toFixed(1)
-                    });
+            try {
+                const records = await BackendAPI.getAllPlayerRecords(gameState.adminToken);
+                const currentRoundId = getCurrentRound().id;
+                
+                const players = [];
+                for (const [nickname, data] of Object.entries(records)) {
+                    const roundAttempts = data.attempts ? data.attempts.filter(a => a.roundId === currentRoundId) : [];
+                    if (roundAttempts.length > 0) {
+                        const bestScore = Math.max(...roundAttempts.map(a => a.score));
+                        players.push({
+                            nickname,
+                            attempts: roundAttempts.length,
+                            bestScore,
+                            avgScore: (roundAttempts.reduce((sum, a) => sum + a.score, 0) / roundAttempts.length).toFixed(1)
+                        });
+                    }
                 }
-            }
-            
-            players.sort((a, b) => b.bestScore - a.bestScore);
-            
-            const container = document.getElementById('adminPlayersList');
-            if (players.length === 0) {
-                container.innerHTML = '<div style="text-align: center; color: #666;">暂无玩家数据</div>';
-                return;
-            }
-            
-            container.innerHTML = `
-                <table class="leaderboard-table">
-                    <thead>
-                        <tr>
-                            <th>昵称</th>
-                            <th>最高分</th>
-                            <th>次数</th>
-                            <th>平均分</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${players.map(p => `
+                
+                players.sort((a, b) => b.bestScore - a.bestScore);
+                
+                const container = document.getElementById('adminPlayersList');
+                if (players.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; color: #666;">暂无玩家数据</div>';
+                    return;
+                }
+                
+                container.innerHTML = `
+                    <table class="leaderboard-table">
+                        <thead>
                             <tr>
-                                <td>${escapeHtml(p.nickname)}</td>
-                                <td>${p.bestScore}</td>
-                                <td>${p.attempts}/3</td>
-                                <td>${p.avgScore}</td>
-                                <td><button class="btn btn-sm btn-danger" onclick="resetPlayer('${p.nickname}')">重置</button></td>
+                                <th>昵称</th>
+                                <th>最高分</th>
+                                <th>次数</th>
+                                <th>平均分</th>
+                                <th>操作</th>
                             </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
+                        </thead>
+                        <tbody>
+                            ${players.map(p => `
+                                <tr>
+                                    <td>${escapeHtml(p.nickname)}</td>
+                                    <td>${p.bestScore}</td>
+                                    <td>${p.attempts}/3</td>
+                                    <td>${p.avgScore}</td>
+                                    <td><button class="btn btn-sm btn-danger" onclick="resetPlayer('${p.nickname}')">重置</button></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (e) {
+                console.error('获取玩家数据失败:', e);
+            }
         }
         
-        function resetPlayer(nickname) {
+        async function resetPlayer(nickname) {
             if (!confirm(`确定要重置玩家 "${nickname}" 的所有数据吗？此操作不可恢复！`)) {
                 return;
             }
             
-            const records = getPlayerRecords();
-            delete records[nickname];
-            setStorage(CONFIG.STORAGE_KEYS.RECORDS, records);
-            
-            // 同时清理IP绑定
-            const ipRecords = getIPRecords();
-            for (const [ip, data] of Object.entries(ipRecords)) {
-                if (data.nickname === nickname) {
-                    delete ipRecords[ip];
+            try {
+                await BackendAPI.deletePlayerRecord(gameState.adminToken, nickname);
+                
+                // 同时清理IP绑定（本地）
+                const ipRecords = getIPRecords();
+                for (const [ip, data] of Object.entries(ipRecords)) {
+                    if (data.nickname === nickname) {
+                        delete ipRecords[ip];
+                    }
                 }
+                setStorage(CONFIG.STORAGE_KEYS.IP_RECORDS, ipRecords);
+                
+                alert('已重置玩家数据');
+                refreshAdminPlayers();
+                refreshAdminOverview();
+            } catch (e) {
+                console.error('重置玩家数据失败:', e);
+                alert('重置失败：' + e.message);
             }
-            setStorage(CONFIG.STORAGE_KEYS.IP_RECORDS, ipRecords);
-            
-            alert('已重置玩家数据');
-            refreshAdminPlayers();
-            refreshAdminOverview();
         }
         
         function refreshAdminQuestions() {
@@ -2821,65 +2852,83 @@
             updateRoundInfo();
         }
         
-        function exportRoundData() {
-            const records = getPlayerRecords();
-            const currentRoundId = getCurrentRound().id;
-            const round = getCurrentRound();
-            
-            let exportText = `【幻兽帕鲁知识竞赛 - 本轮数据】\n`;
-            exportText += `==================\n`;
-            exportText += `轮次：${currentRoundId}\n`;
-            exportText += `时间：${formatDateTime(round.startTime)} - ${formatDateTime(round.endTime)}\n`;
-            exportText += `导出时间：${new Date().toLocaleString()}\n\n`;
-            
-            const leaderboard = [];
-            for (const [nickname, data] of Object.entries(records)) {
-                const roundAttempts = data.attempts.filter(a => a.roundId === currentRoundId);
-                if (roundAttempts.length > 0) {
-                    const bestScore = Math.max(...roundAttempts.map(a => a.score));
-                    leaderboard.push({ nickname, bestScore, attempts: roundAttempts.length });
-                }
+        async function exportRoundData() {
+            if (!gameState.adminToken) {
+                alert('请先登录管理员账号');
+                return;
             }
             
-            leaderboard.sort((a, b) => b.bestScore - a.bestScore);
-            
-            exportText += `【排行榜】\n`;
-            leaderboard.forEach((p, i) => {
-                exportText += `${i + 1}. ${p.nickname} - ${p.bestScore}题 (${p.attempts}次)\n`;
-            });
-            
-            exportText += `\n【详细数据】\n`;
-            for (const [nickname, data] of Object.entries(records)) {
-                const roundAttempts = data.attempts.filter(a => a.roundId === currentRoundId);
-                if (roundAttempts.length > 0) {
-                    exportText += `\n${nickname}:\n`;
-                    roundAttempts.forEach((a, i) => {
-                        exportText += `  第${i + 1}次: ${a.score}题\n`;
-                    });
+            try {
+                const records = await BackendAPI.getAllPlayerRecords(gameState.adminToken);
+                const currentRoundId = getCurrentRound().id;
+                const round = getCurrentRound();
+                
+                let exportText = `【幻兽帕鲁知识竞赛 - 本轮数据】\n`;
+                exportText += `==================\n`;
+                exportText += `轮次：${currentRoundId}\n`;
+                exportText += `时间：${formatDateTime(round.startTime)} - ${formatDateTime(round.endTime)}\n`;
+                exportText += `导出时间：${new Date().toLocaleString()}\n\n`;
+                
+                const leaderboard = [];
+                for (const [nickname, data] of Object.entries(records)) {
+                    const roundAttempts = data.attempts ? data.attempts.filter(a => a.roundId === currentRoundId) : [];
+                    if (roundAttempts.length > 0) {
+                        const bestScore = Math.max(...roundAttempts.map(a => a.score));
+                        leaderboard.push({ nickname, bestScore, attempts: roundAttempts.length });
+                    }
                 }
+                
+                leaderboard.sort((a, b) => b.bestScore - a.bestScore);
+                
+                exportText += `【排行榜】\n`;
+                leaderboard.forEach((p, i) => {
+                    exportText += `${i + 1}. ${p.nickname} - ${p.bestScore}题 (${p.attempts}次)\n`;
+                });
+                
+                exportText += `\n【详细数据】\n`;
+                for (const [nickname, data] of Object.entries(records)) {
+                    const roundAttempts = data.attempts ? data.attempts.filter(a => a.roundId === currentRoundId) : [];
+                    if (roundAttempts.length > 0) {
+                        exportText += `\n${nickname}:\n`;
+                        roundAttempts.forEach((a, i) => {
+                            exportText += `  第${i + 1}次: ${a.score}题\n`;
+                        });
+                    }
+                }
+                
+                document.getElementById('adminExportText').value = exportText;
+            } catch (e) {
+                console.error('导出数据失败:', e);
+                alert('导出失败：' + e.message);
             }
-            
-            document.getElementById('adminExportText').value = exportText;
         }
         
-        function exportAllHistory() {
-            const records = getPlayerRecords();
-            
-            let exportText = `【幻兽帕鲁知识竞赛 - 全部历史数据】\n`;
-            exportText += `==================\n`;
-            exportText += `导出时间：${new Date().toLocaleString()}\n\n`;
-            
-            // 按轮次分组
-            const byRound = {};
-            for (const [nickname, data] of Object.entries(records)) {
-                data.attempts.forEach(a => {
-                    if (!byRound[a.roundId]) byRound[a.roundId] = [];
-                    byRound[a.roundId].push({ nickname, ...a });
-                });
+        async function exportAllHistory() {
+            if (!gameState.adminToken) {
+                alert('请先登录管理员账号');
+                return;
             }
             
-            Object.entries(byRound).sort().reverse().forEach(([roundId, attempts]) => {
-                exportText += `\n【${roundId}】\n`;
+            try {
+                const records = await BackendAPI.getAllPlayerRecords(gameState.adminToken);
+                
+                let exportText = `【幻兽帕鲁知识竞赛 - 全部历史数据】\n`;
+                exportText += `==================\n`;
+                exportText += `导出时间：${new Date().toLocaleString()}\n\n`;
+                
+                // 按轮次分组
+                const byRound = {};
+                for (const [nickname, data] of Object.entries(records)) {
+                    if (data.attempts) {
+                        data.attempts.forEach(a => {
+                            if (!byRound[a.roundId]) byRound[a.roundId] = [];
+                            byRound[a.roundId].push({ nickname, ...a });
+                        });
+                    }
+                }
+                
+                Object.entries(byRound).sort().reverse().forEach(([roundId, attempts]) => {
+                    exportText += `\n【${roundId}】\n`;
                 
                 // 该轮排行榜
                 const playerBest = {};
@@ -2896,6 +2945,10 @@
             });
             
             document.getElementById('adminExportText').value = exportText;
+            } catch (e) {
+                console.error('导出历史数据失败:', e);
+                alert('导出失败：' + e.message);
+            }
         }
         
         function copyAdminExport() {
