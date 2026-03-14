@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>幻兽帕鲁知识竞赛 - 每周挑战</title>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script>
         // 全局错误捕获
         window.addEventListener('error', function(e) {
@@ -13,7 +17,7 @@
             console.error('未处理Promise错误:', e.reason);
         });
         
-        console.log('页面加载 - 使用REST API模式');
+        console.log('页面加载 - 使用 Firebase 模式');
     </script>
     <style>
         * {
@@ -996,11 +1000,7 @@
             FIREBASE: {
                 API_KEY: 'AIzaSyB8s63wS3n7hB3lW_rH3EXAMPLE_ONLY',
                 DB_URL: 'https://nana01-9a9ee-default-rtdb.asia-southeast1.firebasedatabase.app'
-            },,
-            // 后端 API 地址
-            API_BASE_URL: window.location.origin.includes('localhost') 
-                ? 'http://localhost:3000/api' 
-                : '/api'
+            }
             
         };
         
@@ -1023,94 +1023,131 @@
             }
         };
 
-        // 后端 API 模块
+        // Firebase 配置
+        const firebaseConfig = {
+            apiKey: CONFIG.FIREBASE.API_KEY,
+            databaseURL: CONFIG.FIREBASE.DB_URL
+        };
+        
+        // Firebase 全局变量
+        let firebaseApp = null;
+        let firebaseDb = null;
+        
+        // 初始化 Firebase
+        function initFirebase() {
+            if (!firebaseApp) {
+                firebaseApp = firebase.initializeApp(firebaseConfig);
+                firebaseDb = firebase.database();
+                console.log('Firebase: 已初始化');
+            }
+            return firebaseDb;
+        }
+        
+        // Firebase API 模块
         const BackendAPI = {
-            baseUrl: CONFIG.API_BASE_URL,
-            
             async getQuestions() {
-                const response = await fetch(`${this.baseUrl}/questions`);
-                if (!response.ok) throw new Error('Failed to fetch questions');
-                const data = await response.json();
-                return data.questions;
+                const db = initFirebase();
+                const snapshot = await db.ref('/questions').once('value');
+                const data = snapshot.val();
+                if (!data) return [];
+                return Object.entries(data).map(([id, q]) => ({
+                    id: parseInt(id),
+                    question: q.question,
+                    options: q.options
+                }));
             },
             
             async verifyAnswer(questionId, answer) {
-                const response = await fetch(`${this.baseUrl}/answer`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ questionId, answer })
-                });
-                if (!response.ok) throw new Error('Failed to verify answer');
-                return await response.json();
+                const db = initFirebase();
+                const snapshot = await db.ref(`/answers/${questionId}`).once('value');
+                const answerData = snapshot.val();
+                if (!answerData) throw new Error('答案不存在');
+                return {
+                    correct: answer === answerData.correct,
+                    correctAnswer: answerData.correct
+                };
             },
             
             async adminLogin(password) {
-                const response = await fetch(`${this.baseUrl}/admin/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password })
-                });
-                if (response.status === 401) return { success: false, error: '密码错误' };
-                if (!response.ok) throw new Error('Login failed');
-                return await response.json();
+                const db = initFirebase();
+                const snapshot = await db.ref('/admin/passwordHash').once('value');
+                const storedHash = snapshot.val();
+                const inputHash = await SecurityUtils.sha256(password);
+                const validHash = storedHash || await SecurityUtils.sha256('palu2024admin');
+                
+                if (inputHash === validHash) {
+                    const token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+                    await db.ref(`/admin/sessions/${token}`).set({
+                        createdAt: firebase.database.ServerValue.TIMESTAMP
+                    });
+                    return { success: true, token };
+                }
+                return { success: false, error: '密码错误' };
             },
             
             async verifyAdminToken(token) {
-                const response = await fetch(`${this.baseUrl}/admin/verify`, {
-                    headers: { 'admin-token': token }
-                });
-                const data = await response.json();
-                return data.valid;
+                if (!token) return false;
+                const db = initFirebase();
+                const snapshot = await db.ref(`/admin/sessions/${token}`).once('value');
+                return snapshot.exists();
             },
             
             async getAdminQuestions(token) {
-                const response = await fetch(`${this.baseUrl}/admin/questions`, {
-                    headers: { 'admin-token': token }
-                });
-                if (!response.ok) throw new Error('Failed to fetch questions');
-                return await response.json();
+                if (!(await this.verifyAdminToken(token))) throw new Error('未授权');
+                const db = initFirebase();
+                const [qSnap, aSnap] = await Promise.all([
+                    db.ref('/questions').once('value'),
+                    db.ref('/answers').once('value')
+                ]);
+                const questions = qSnap.val() || {};
+                const answers = aSnap.val() || {};
+                const fullQuestions = Object.entries(questions).map(([id, q]) => ({
+                    id: parseInt(id), question: q.question, options: q.options,
+                    correct: answers[id]?.correct ?? 0
+                }));
+                return { questions: fullQuestions, total: fullQuestions.length };
             },
             
             async updateQuestions(token, questions) {
-                const response = await fetch(`${this.baseUrl}/admin/questions`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'admin-token': token
-                    },
-                    body: JSON.stringify({ questions })
+                if (!(await this.verifyAdminToken(token))) throw new Error('未授权');
+                const db = initFirebase();
+                const qData = {}, aData = {};
+                questions.forEach((q, i) => {
+                    qData[i] = { question: q.question, options: q.options };
+                    aData[i] = { correct: q.correct };
                 });
-                if (!response.ok) throw new Error('Failed to update questions');
-                return await response.json();
+                await Promise.all([
+                    db.ref('/questions').set(qData),
+                    db.ref('/answers').set(aData)
+                ]);
+                return { success: true, total: questions.length };
             },
             
             async addQuestion(token, question) {
-                const response = await fetch(`${this.baseUrl}/admin/question`, {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'admin-token': token
-                    },
-                    body: JSON.stringify(question)
-                });
-                if (!response.ok) throw new Error('Failed to add question');
-                return await response.json();
+                if (!(await this.verifyAdminToken(token))) throw new Error('未授权');
+                const db = initFirebase();
+                const snap = await db.ref('/questions').once('value');
+                const newId = Object.keys(snap.val() || {}).length;
+                await Promise.all([
+                    db.ref(`/questions/${newId}`).set({ question: question.question, options: question.options }),
+                    db.ref(`/answers/${newId}`).set({ correct: question.correct })
+                ]);
+                return { success: true, id: newId };
             },
             
             async deleteQuestion(token, id) {
-                const response = await fetch(`${this.baseUrl}/admin/question/${id}`, {
-                    method: 'DELETE',
-                    headers: { 'admin-token': token }
-                });
-                if (!response.ok) throw new Error('Failed to delete question');
-                return await response.json();
+                if (!(await this.verifyAdminToken(token))) throw new Error('未授权');
+                const db = initFirebase();
+                await Promise.all([
+                    db.ref(`/questions/${id}`).remove(),
+                    db.ref(`/answers/${id}`).remove()
+                ]);
+                return { success: true };
             },
             
             async adminLogout(token) {
-                await fetch(`${this.baseUrl}/admin/logout`, {
-                    method: 'POST',
-                    headers: { 'admin-token': token }
-                });
+                const db = initFirebase();
+                await db.ref(`/admin/sessions/${token}`).remove();
             }
         };
 
