@@ -1689,6 +1689,9 @@
             }
         }
         
+        // 兼容旧代码的别名
+        const updatePlayerRecords = updatePlayerAttemptsInfo;
+        
         document.getElementById('nickname').addEventListener('input', updatePlayerAttemptsInfo);
         
         // ==================== 开始游戏 ====================
