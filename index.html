@@ -2704,7 +2704,7 @@
             try {
                 await BackendAPI.deleteQuestion(gameState.adminToken, index);
                 alert('题目删除成功！');
-                loadAdminPanel();
+                refreshAdminQuestions();
                 
                 // 刷新前端题目缓存
                 const response = await BackendAPI.getQuestions();
@@ -2758,7 +2758,7 @@
                 document.getElementById('correctAnswer').value = '0';
                 
                 alert('题目添加成功！');
-                loadAdminPanel();
+                refreshAdminQuestions();
                 
                 // 刷新前端题目缓存
                 const response = await BackendAPI.getQuestions();
