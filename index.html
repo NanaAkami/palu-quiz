@@ -1156,6 +1156,9 @@
         async function verifyAdminKey(input) {
             // 所有验证都通过后端API进行
             const result = await BackendAPI.adminLogin(input);
+            if (result.success && result.token) {
+                gameState.adminToken = result.token;  // 保存 token
+            }
             return result.success;
         }
         
