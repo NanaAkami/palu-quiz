@@ -1,0 +1,17 @@
+{
+  "name": "palu-quiz-backend",
+  "version": "2.0.0",
+  "description": "帕鲁答题游戏后端服务 - 安全存储题库和管理员密码",
+  "main": "backend.js",
+  "scripts": {
+    "start": "node backend.js",
+    "dev": "ADMIN_PASSWORD=palu2024admin node backend.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
