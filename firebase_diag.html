@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Firebase Diagnostics</title>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .log { margin: 5px 0; padding: 5px; background: #f0f0f0; }
+        .error { background: #ffcccc; }
+        .success { background: #ccffcc; }
+    </style>
+</head>
+<body>
+    <h1>Firebase Realtime Database Diagnostics</h1>
+    <div id="logs"></div>
+    
+    <script>
+        function log(msg, type = 'info') {
+            const div = document.createElement('div');
+            div.className = 'log ' + type;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            document.getElementById('logs').appendChild(div);
+        }
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyDwb5W_Qk9A6LFwcw1piqSRv63wb5kM-t8",
+            authDomain: "nana01-9a9ee.firebaseapp.com",
+            projectId: "nana01-9a9ee",
+            storageBucket: "nana01-9a9ee.firebasestorage.app",
+            messagingSenderId: "462751727825",
+            appId: "1:462751727825:web:7e90dc50d3bc295964c5f0",
+            databaseURL: "https://nana01-9a9ee-default-rtdb.asia-southeast1.firebasedatabase.app"
+        };
+        
+        log("Initializing Firebase...");
+        
+        try {
+            firebase.initializeApp(firebaseConfig);
+            log("Firebase initialized successfully", "success");
+            
+            const db = firebase.database();
+            log("Database reference created");
+            
+            // Try anonymous auth first
+            log("Checking auth state...");
+            
+            // Direct write test
+            log("Attempting direct write...");
+            db.ref("diagnostics/test").set({
+                timestamp: Date.now(),
+                message: "Test write"
+            })
+            .then(() => {
+                log("✅ WRITE SUCCESS!", "success");
+            })
+            .catch(err => {
+                log("❌ WRITE FAILED: " + err.message, "error");
+                log("Error code: " + err.code, "error");
+                
+                // Try read as fallback
+                log("Attempting read instead...");
+                return db.ref(".info/connected").once("value");
+            })
+            .then(snapshot => {
+                if (snapshot) {
+                    log("Read test: " + JSON.stringify(snapshot.val()), "success");
+                }
+            })
+            .catch(err => {
+                log("❌ READ ALSO FAILED: " + err.message, "error");
+            });
+            
+        } catch (e) {
+            log("❌ INIT ERROR: " + e.message, "error");
+        }
+    </script>
+</body>
+</html>
