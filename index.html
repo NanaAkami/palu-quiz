@@ -2725,22 +2725,6 @@
                 alert('添加失败：' + e.message);
             }
         }
-            
-            const correctStr = prompt(`正确答案序号（0-${options.length - 1}）：`);
-            const correct = parseInt(correctStr);
-            
-            if (isNaN(correct) || correct < 0 || correct >= options.length) {
-                alert('无效的序号');
-                return;
-            }
-            
-            const questions = getQuestions();
-            questions.push({ question, options, correct });
-            saveQuestions(questions);
-            
-            alert('题目添加成功！');
-            refreshAdminQuestions();
-        }
         
         async function resetToDefaultQuestions() {
             if (!confirm('确定要恢复默认题库吗？这将删除所有自定义题目！')) return;
