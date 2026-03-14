@@ -1243,6 +1243,21 @@
                     }
                 }
                 return allRecords;
+            },
+            
+            // 保存活动设置（管理员）
+            async saveRoundSettings(token, round) {
+                if (!(await this.verifyAdminToken(token))) throw new Error('未授权');
+                const db = initFirebase();
+                await db.ref('/settings/currentRound').set(round);
+                return { success: true };
+            },
+            
+            // 获取活动设置
+            async getRoundSettings() {
+                const db = initFirebase();
+                const snapshot = await db.ref('/settings/currentRound').once('value');
+                return snapshot.val();
             }
         };
         
@@ -1672,6 +1687,25 @@
         }
         
         // ==================== 活动轮次管理 ====================
+        // 从后端同步活动设置到本地
+        async function syncRoundSettingsFromBackend() {
+            try {
+                const backendRound = await BackendAPI.getRoundSettings();
+                if (backendRound) {
+                    const localRound = getStorage(CONFIG.STORAGE_KEYS.ROUND);
+                    // 如果后端设置更新，或本地没有设置，则更新本地
+                    if (!localRound || backendRound.id !== localRound.id) {
+                        saveRound(backendRound);
+                        console.log('已从后端同步活动设置:', backendRound.id);
+                        return true;
+                    }
+                }
+            } catch (e) {
+                console.log('从后端同步活动设置失败:', e);
+            }
+            return false;
+        }
+        
         function getCurrentRound() {
             const round = getStorage(CONFIG.STORAGE_KEYS.ROUND);
             if (!round) {
@@ -1686,7 +1720,7 @@
                 endOfWeek.setHours(23, 59, 59, 999);
                 
                 return {
-                    id: 'round_' + startOfWeek.toISOString().split('T')[0],
+                    id: 'round_' + startOfWeek.toISOString().replace(/[:.]/g, '-').slice(0, 19),
                     startTime: startOfWeek.getTime(),
                     endTime: endOfWeek.getTime(),
                     isActive: true
@@ -2851,7 +2885,12 @@
             }
         }
         
-        function saveRoundSettings() {
+        async function saveRoundSettings() {
+            if (!gameState.isAdmin || !gameState.adminToken) {
+                alert('请先登录管理员账号');
+                return;
+            }
+            
             const startTime = new Date(document.getElementById('roundStartTime').value).getTime();
             const endTime = new Date(document.getElementById('roundEndTime').value).getTime();
             
@@ -2865,16 +2904,30 @@
                 return;
             }
             
+            // 使用更精确的轮次ID：日期_时分秒
+            const startDate = new Date(startTime);
+            const idSuffix = startDate.toISOString()
+                .replace(/[:.]/g, '-')
+                .replace('T', '_')
+                .slice(0, 19);
+            
             const round = {
-                id: 'round_' + new Date(startTime).toISOString().split('T')[0],
+                id: 'round_' + idSuffix,
                 startTime,
                 endTime,
                 isActive: true
             };
             
-            saveRound(round);
-            alert('活动设置已保存');
-            updateRoundInfo();
+            try {
+                await BackendAPI.saveRoundSettings(gameState.adminToken, round);
+                // 同时保存到本地
+                saveRound(round);
+                alert('活动设置已保存并同步到所有玩家');
+                updateRoundInfo();
+            } catch (e) {
+                console.error('保存活动设置失败:', e);
+                alert('保存失败：' + e.message);
+            }
         }
         
         function endRoundNow() {
@@ -3006,6 +3059,9 @@
             await CloudSync.init();
             console.log('✅ 云端同步已初始化');
             
+            // 从后端同步活动设置
+            await syncRoundSettingsFromBackend();
+            
             // 加载题目
             try {
                 const questions = await BackendAPI.getQuestions();
@@ -3019,6 +3075,15 @@
             updateRoundInfo();
             updateTopPlayers();
             setInterval(updateRoundInfo, 60000);
+            
+            // 每30秒检查一次后端的活动设置是否有更新
+            setInterval(async () => {
+                const updated = await syncRoundSettingsFromBackend();
+                if (updated) {
+                    updateRoundInfo();
+                    console.log('活动设置已更新');
+                }
+            }, 30000);
             
             // 回车键开始游戏
             document.getElementById('nickname').addEventListener('keypress', function(e) {
