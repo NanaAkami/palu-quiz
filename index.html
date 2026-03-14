@@ -1543,38 +1543,6 @@
             return div.innerHTML;
         }
         
-        // ==================== 页面初始化 ====================
-        document.addEventListener('DOMContentLoaded', () => {
-            // 初始化云端同步（Firebase加载可能需要时间）
-            setTimeout(() => {
-                if (window.firebaseDB) {
-                    CloudSync.init();
-                    console.log('✅ Firebase已连接');
-                } else {
-                    console.log('⚠️ Firebase未加载，使用本地模式');
-                }
-            }, 1000);
-            
-            updateRoundInfo();
-            updateTopPlayers();
-            setInterval(updateRoundInfo, 60000); // 每分钟更新一次
-            
-            // 设置默认管理员密钥（如果未设置）- 加密存储
-            if (!localStorage.getItem(CONFIG.STORAGE_KEYS.ADMIN_KEY)) {
-                saveAdminKey(CONFIG.DEFAULT_ADMIN_KEY);
-            }
-            
-            // 回车键开始游戏
-            document.getElementById('nickname').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    startGame();
-                }
-            });
-            
-            // 输入框变化时更新玩家信息
-            document.getElementById('nickname').addEventListener('input', updatePlayerAttemptsInfo);
-        });
-        
         // ==================== 活动信息显示 ====================
         function updateRoundInfo() {
             const round = getCurrentRound();
@@ -2701,6 +2669,38 @@
                 alert('数据已复制到剪贴板');
             });
         }
+        
+        // ==================== 页面初始化 ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            // 初始化云端同步（Firebase加载可能需要时间）
+            setTimeout(() => {
+                if (window.firebaseDB) {
+                    CloudSync.init();
+                    console.log('✅ Firebase已连接');
+                } else {
+                    console.log('⚠️ Firebase未加载，使用本地模式');
+                }
+            }, 1000);
+            
+            updateRoundInfo();
+            updateTopPlayers();
+            setInterval(updateRoundInfo, 60000); // 每分钟更新一次
+            
+            // 设置默认管理员密钥（如果未设置）- 加密存储
+            if (!localStorage.getItem(CONFIG.STORAGE_KEYS.ADMIN_KEY)) {
+                saveAdminKey(CONFIG.DEFAULT_ADMIN_KEY);
+            }
+            
+            // 回车键开始游戏
+            document.getElementById('nickname').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    startGame();
+                }
+            });
+            
+            // 输入框变化时更新玩家信息
+            document.getElementById('nickname').addEventListener('input', updatePlayerAttemptsInfo);
+        });
     </script>
 </body>
 </html>
