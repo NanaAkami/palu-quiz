@@ -4,9 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>幻兽帕鲁知识竞赛 - 每周挑战</title>
-    <!-- Firebase SDK (Realtime Database Mode) -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <script>
         // 全局错误捕获
         window.addEventListener('error', function(e) {
@@ -16,30 +13,7 @@
             console.error('未处理Promise错误:', e.reason);
         });
         
-        try {
-            const firebaseConfig = {
-                apiKey: "AIzaSyDwb5W_Qk9A6LFwcw1piqSRv63wb5kM-t8",
-                authDomain: "nana01-9a9ee.firebaseapp.com",
-                projectId: "nana01-9a9ee",
-                storageBucket: "nana01-9a9ee.firebasestorage.app",
-                messagingSenderId: "462751727825",
-                appId: "1:462751727825:web:7e90dc50d3bc295964c5f0",
-                databaseURL: "https://nana01-9a9ee-default-rtdb.asia-southeast1.firebasedatabase.app"
-            };
-            
-            // 初始化 Firebase
-            if (typeof firebase !== 'undefined') {
-                firebase.initializeApp(firebaseConfig);
-                window.firebaseDB = firebase.database();
-                console.log('Firebase Realtime Database initialized');
-            } else {
-                console.warn('Firebase SDK not loaded');
-                window.firebaseDB = null;
-            }
-        } catch (e) {
-            console.error('Firebase init error:', e);
-            window.firebaseDB = null;
-        }
+        console.log('页面加载 - 使用REST API模式');
     </script>
     <style>
         * {
@@ -1173,23 +1147,14 @@
             }
         }
         
-        // ==================== 云端数据同步 (Realtime Database) ====================
+        // ==================== 云端数据同步 (使用 REST API) ====================
         const CloudSync = {
-            db: null,
+            dbUrl: "https://nana01-9a9ee-default-rtdb.asia-southeast1.firebasedatabase.app",
             isOnline: true,
             pendingSync: [],
-            enabled: false,
+            enabled: true,
             
             init() {
-                this.db = window.firebaseDB;
-                
-                if (!this.db) {
-                    console.log('CloudSync: Firebase未初始化，使用本地模式');
-                    this.enabled = false;
-                    return;
-                }
-                
-                this.enabled = true;
                 this.checkConnection();
                 
                 // 监听网络状态
@@ -1201,7 +1166,7 @@
                     this.isOnline = false;
                 });
                 
-                console.log('CloudSync: 已初始化 (Realtime Database)');
+                console.log('CloudSync: 已初始化 (REST API模式)');
             },
             
             checkConnection() {
@@ -1216,12 +1181,151 @@
             
             // 保存玩家记录到云端
             async savePlayerRecord(nickname, data) {
-                if (!this.enabled || !this.db || !this.isOnline) {
+                if (!this.isOnline) {
                     this.pendingSync.push({ type: 'record', nickname, data });
                     return false;
                 }
                 
                 try {
+                    const roundId = this.getRoundId();
+                    const encodedNickname = encodeURIComponent(nickname.replace(/[.#$[\]]/g, '_'));
+                    const url = `${this.dbUrl}/rounds/${roundId}/players/${encodedNickname}.json`;
+                    
+                    const response = await fetch(url, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            ...data,
+                            lastUpdated: Date.now()
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        console.log('CloudSync: 保存成功', nickname);
+                        return true;
+                    } else {
+                        throw new Error('HTTP ' + response.status);
+                    }
+                } catch (e) {
+                    console.error('保存到云端失败:', e);
+                    this.pendingSync.push({ type: 'record', nickname, data });
+                    return false;
+                }
+            },
+            
+            // 获取玩家记录
+            async getPlayerRecord(nickname) {
+                try {
+                    const roundId = this.getRoundId();
+                    const encodedNickname = encodeURIComponent(nickname.replace(/[.#$[\]]/g, '_'));
+                    const url = `${this.dbUrl}/rounds/${roundId}/players/${encodedNickname}.json`;
+                    
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data) {
+                            // 同步到本地
+                            const records = getStorage(CONFIG.STORAGE_KEYS.RECORDS, {});
+                            records[nickname] = data;
+                            setStorage(CONFIG.STORAGE_KEYS.RECORDS, records);
+                        }
+                        return data;
+                    }
+                    return null;
+                } catch (e) {
+                    console.error('从云端读取失败:', e);
+                    return getStorage(CONFIG.STORAGE_KEYS.RECORDS, {})[nickname] || null;
+                }
+            },
+            
+            // 获取排行榜
+            async getLeaderboard(limitCount = 50) {
+                try {
+                    const roundId = this.getRoundId();
+                    const url = `${this.dbUrl}/rounds/${roundId}/players.json`;
+                    
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error('HTTP ' + response.status);
+                    }
+                    
+                    const data = await response.json();
+                    if (!data) return [];
+                    
+                    const leaderboard = Object.entries(data).map(([nickname, playerData]) => ({
+                        nickname,
+                        ...playerData
+                    }));
+                    
+                    // 排序
+                    leaderboard.sort((a, b) => (b.bestScore || 0) - (a.bestScore || 0));
+                    return leaderboard.slice(0, limitCount);
+                } catch (e) {
+                    console.error('获取排行榜失败:', e);
+                    return this.getLocalLeaderboard(limitCount);
+                }
+            },
+            
+            // 获取本地排行榜
+            getLocalLeaderboard(limit = 50) {
+                const records = getStorage(CONFIG.STORAGE_KEYS.RECORDS, {});
+                const currentRoundId = getCurrentRound().id;
+                
+                const leaderboard = [];
+                for (const [nickname, data] of Object.entries(records)) {
+                    const roundAttempts = data.attempts?.filter(a => a.roundId === currentRoundId) || [];
+                    if (roundAttempts.length > 0) {
+                        const bestScore = Math.max(...roundAttempts.map(a => a.score));
+                        leaderboard.push({
+                            nickname,
+                            bestScore,
+                            attempts: roundAttempts.length,
+                            lastAttempt: roundAttempts[roundAttempts.length - 1]?.timestamp
+                        });
+                    }
+                }
+                
+                leaderboard.sort((a, b) => b.bestScore - a.bestScore);
+                return leaderboard.slice(0, limit);
+            },
+            
+            // 订阅排行榜更新
+            subscribeToLeaderboard(callback, limitCount = 50) {
+                // REST API不支持实时订阅，先返回本地数据，然后定时轮询
+                this.getLeaderboard(limitCount).then(data => callback(data));
+                
+                // 每30秒更新一次
+                const intervalId = setInterval(async () => {
+                    const data = await this.getLeaderboard(limitCount);
+                    callback(data);
+                }, 30000);
+                
+                return { stop: () => clearInterval(intervalId) };
+            },
+            
+            // 取消订阅
+            unsubscribe(handle) {
+                if (handle && handle.stop) {
+                    handle.stop();
+                }
+            },
+            
+            // 同步待处理的数据
+            async syncPending() {
+                if (this.pendingSync.length === 0) return;
+                
+                const items = [...this.pendingSync];
+                this.pendingSync = [];
+                
+                for (const item of items) {
+                    if (item.type === 'record') {
+                        await this.savePlayerRecord(item.nickname, item.data);
+                    }
+                }
+                
+                console.log(`同步完成: ${items.length} 条记录`);
+            }
+        };
                     const roundId = this.getRoundId();
                     const ref = this.db.ref(`rounds/${roundId}/players/${nickname}`);
                     await ref.set({
@@ -2786,15 +2890,9 @@
         
         // ==================== 页面初始化 ====================
         document.addEventListener('DOMContentLoaded', () => {
-            // 初始化云端同步（Firebase加载可能需要时间）
-            setTimeout(() => {
-                if (window.firebaseDB) {
-                    CloudSync.init();
-                    console.log('✅ Firebase已连接');
-                } else {
-                    console.log('⚠️ Firebase未加载，使用本地模式');
-                }
-            }, 1000);
+            // 初始化云端同步（REST API模式）
+            CloudSync.init();
+            console.log('✅ 云端同步已初始化');
             
             updateRoundInfo();
             updateTopPlayers();
@@ -2813,6 +2911,8 @@
             });
             
             // 输入框变化时更新玩家信息
+            document.getElementById('nickname').addEventListener('input', updatePlayerAttemptsInfo);
+        });
             document.getElementById('nickname').addEventListener('input', updatePlayerAttemptsInfo);
         });
     </script>
