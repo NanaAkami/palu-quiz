@@ -2,12 +2,12 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Firebase Test</title>
+    <title>Firebase Realtime Database Test</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 </head>
 <body>
-    <h1>Firebase Connection Test</h1>
+    <h1>Firebase Realtime Database Test</h1>
     <div id="status">Loading...</div>
     <div id="error"></div>
     
@@ -18,27 +18,28 @@
             projectId: "nana01-9a9ee",
             storageBucket: "nana01-9a9ee.firebasestorage.app",
             messagingSenderId: "462751727825",
-            appId: "1:462751727825:web:7e90dc50d3bc295964c5f0"
+            appId: "1:462751727825:web:7e90dc50d3bc295964c5f0",
+            databaseURL: "https://nana01-9a9ee-default-rtdb.asia-southeast1.firebasedatabase.app"
         };
         
         try {
             firebase.initializeApp(firebaseConfig);
-            const db = firebase.firestore();
+            const db = firebase.database();
             
             // Test write
-            db.collection("test").doc("connection").set({
+            db.ref("test/connection").set({
                 timestamp: new Date().toISOString(),
                 test: true
             }).then(() => {
-                document.getElementById("status").innerHTML = "✅ Firebase连接成功！写入测试通过。";
+                document.getElementById("status").innerHTML = "✅ Firebase Realtime Database连接成功！写入测试通过。";
             }).catch(err => {
                 document.getElementById("status").innerHTML = "❌ Firebase写入失败";
                 document.getElementById("error").innerHTML = "错误: " + err.message;
             });
             
             // Test read
-            db.collection("test").doc("connection").get().then(doc => {
-                console.log("Read test:", doc.exists ? "成功" : "文档不存在");
+            db.ref("test/connection").once("value").then(snapshot => {
+                console.log("Read test:", snapshot.exists() ? "成功" : "文档不存在");
             }).catch(err => {
                 console.error("Read error:", err);
             });
