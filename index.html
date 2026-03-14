@@ -1192,20 +1192,57 @@
                 await db.ref(`/admin/sessions/${token}`).remove();
             },
             
-            // 获取所有玩家记录（管理员）
+            // 获取所有玩家记录（管理员）- 从 rounds 路径读取
             async getAllPlayerRecords(token) {
                 if (!(await this.verifyAdminToken(token))) throw new Error('未授权');
                 const db = initFirebase();
-                const snapshot = await db.ref('/records').once('value');
-                return snapshot.val() || {};
+                const currentRoundId = getCurrentRound().id;
+                const snapshot = await db.ref(`/rounds/${currentRoundId}/players`).once('value');
+                const data = snapshot.val() || {};
+                
+                // 转换为统一格式
+                const records = {};
+                for (const [nickname, playerData] of Object.entries(data)) {
+                    records[nickname] = {
+                        attempts: playerData.attempts || [],
+                        bestScore: playerData.bestScore || 0
+                    };
+                }
+                return records;
             },
             
-            // 删除玩家记录（管理员）
+            // 删除玩家记录（管理员）- 从 rounds 路径删除
             async deletePlayerRecord(token, nickname) {
                 if (!(await this.verifyAdminToken(token))) throw new Error('未授权');
                 const db = initFirebase();
-                await db.ref(`/records/${nickname}`).remove();
+                const currentRoundId = getCurrentRound().id;
+                const safeNickname = nickname.replace(/[.#$[\]]/g, '_');
+                await db.ref(`/rounds/${currentRoundId}/players/${safeNickname}`).remove();
                 return { success: true };
+            },
+            
+            // 获取所有轮次的玩家记录（管理员）
+            async getAllRoundsPlayerRecords(token) {
+                if (!(await this.verifyAdminToken(token))) throw new Error('未授权');
+                const db = initFirebase();
+                const snapshot = await db.ref('/rounds').once('value');
+                const rounds = snapshot.val() || {};
+                
+                // 合并所有轮次的数据
+                const allRecords = {};
+                for (const [roundId, roundData] of Object.entries(rounds)) {
+                    if (roundData.players) {
+                        for (const [nickname, playerData] of Object.entries(roundData.players)) {
+                            if (!allRecords[nickname]) {
+                                allRecords[nickname] = { attempts: [] };
+                            }
+                            if (playerData.attempts) {
+                                allRecords[nickname].attempts.push(...playerData.attempts);
+                            }
+                        }
+                    }
+                }
+                return allRecords;
             }
         };
         
@@ -2910,7 +2947,7 @@
             }
             
             try {
-                const records = await BackendAPI.getAllPlayerRecords(gameState.adminToken);
+                const records = await BackendAPI.getAllRoundsPlayerRecords(gameState.adminToken);
                 
                 let exportText = `【幻兽帕鲁知识竞赛 - 全部历史数据】\n`;
                 exportText += `==================\n`;
