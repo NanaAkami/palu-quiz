@@ -1984,7 +1984,7 @@
         }
         
         // ==================== 选择答案 ====================
-        function selectOption(index, btnElement) {
+        async function selectOption(index, btnElement) {
             if (gameState.isProcessing) return;
             
             const answerTime = Date.now() - gameState.questionStartTime;
@@ -2003,23 +2003,32 @@
             const allOptions = document.querySelectorAll('.option');
             allOptions.forEach(opt => opt.classList.add('disabled'));
             
-            if (index === gameState.currentQuestion.correct) {
-                // 答对
-                gameState.currentStreak++;
-                showFeedback('✓', '#28a745');
+            // 使用 Firebase 验证答案
+            try {
+                const result = await BackendAPI.verifyAnswer(gameState.currentQuestion.id, index);
                 
-                setTimeout(() => {
-                    gameState.isProcessing = false;
-                    nextQuestion();
-                }, 600);
-            } else {
-                // 答错 - 不显示正确答案，直接结束
-                btnElement.classList.add('selected-wrong');
-                showFeedback('✗', '#dc3545');
-                
-                setTimeout(() => {
-                    endGame();
-                }, 800);
+                if (result.correct) {
+                    // 答对
+                    gameState.currentStreak++;
+                    showFeedback('✓', '#28a745');
+                    
+                    setTimeout(() => {
+                        gameState.isProcessing = false;
+                        nextQuestion();
+                    }, 600);
+                } else {
+                    // 答错 - 不显示正确答案，直接结束
+                    btnElement.classList.add('selected-wrong');
+                    showFeedback('✗', '#dc3545');
+                    
+                    setTimeout(() => {
+                        endGame();
+                    }, 800);
+                }
+            } catch (e) {
+                console.error('验证答案失败:', e);
+                alert('验证答案失败，请重试');
+                gameState.isProcessing = false;
             }
         }
         
@@ -2869,13 +2878,23 @@
         
         // ==================== 页面初始化 ====================
         document.addEventListener('DOMContentLoaded', async () => {
-            // 初始化云端同步（REST API + 匿名认证模式）
+            // 初始化云端同步
             await CloudSync.init();
             console.log('✅ 云端同步已初始化');
             
+            // 加载题目
+            try {
+                const questions = await BackendAPI.getQuestions();
+                gameState.questions = questions;
+                console.log(`✅ 已加载 ${questions.length} 道题目`);
+            } catch (e) {
+                console.error('❌ 加载题目失败:', e);
+                alert('加载题目失败，请刷新页面重试');
+            }
+            
             updateRoundInfo();
             updateTopPlayers();
-            setInterval(updateRoundInfo, 60000); // 每分钟更新一次
+            setInterval(updateRoundInfo, 60000);
             
             // 回车键开始游戏
             document.getElementById('nickname').addEventListener('keypress', function(e) {
