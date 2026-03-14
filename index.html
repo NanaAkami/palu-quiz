@@ -912,11 +912,44 @@
             <!-- 题库管理 -->
             <div class="admin-content" id="adminQuestions">
                 <div class="admin-panel">
-                    <h3>题库管理</h3>
-                    <div style="margin-bottom: 15px;">
-                        <button class="btn btn-sm" onclick="addNewQuestion()">+ 添加题目</button>
-                        <button class="btn btn-sm btn-secondary" onclick="resetToDefaultQuestions()">恢复默认题库</button>
+                    <h3>添加新题目</h3>
+                    <div class="input-group">
+                        <label for="newQuestion">题目</label>
+                        <input type="text" id="newQuestion" placeholder="输入题目内容">
                     </div>
+                    <div class="input-group">
+                        <label for="optionA">选项 A</label>
+                        <input type="text" id="optionA" placeholder="输入选项 A">
+                    </div>
+                    <div class="input-group">
+                        <label for="optionB">选项 B</label>
+                        <input type="text" id="optionB" placeholder="输入选项 B">
+                    </div>
+                    <div class="input-group">
+                        <label for="optionC">选项 C（可选）</label>
+                        <input type="text" id="optionC" placeholder="输入选项 C（可选）">
+                    </div>
+                    <div class="input-group">
+                        <label for="optionD">选项 D（可选）</label>
+                        <input type="text" id="optionD" placeholder="输入选项 D（可选）">
+                    </div>
+                    <div class="input-group">
+                        <label for="correctAnswer">正确答案</label>
+                        <select id="correctAnswer" style="width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 1em;">
+                            <option value="0">选项 A</option>
+                            <option value="1">选项 B</option>
+                            <option value="2">选项 C</option>
+                            <option value="3">选项 D</option>
+                        </select>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <button class="btn" onclick="addNewQuestion()">+ 添加题目</button>
+                        <button class="btn btn-secondary" onclick="resetToDefaultQuestions()">恢复默认题库</button>
+                    </div>
+                </div>
+                
+                <div class="admin-panel">
+                    <h3>现有题目</h3>
                     <div id="questionsList"></div>
                 </div>
             </div>
