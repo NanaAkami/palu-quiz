@@ -1570,6 +1570,9 @@
                     startGame();
                 }
             });
+            
+            // 输入框变化时更新玩家信息
+            document.getElementById('nickname').addEventListener('input', updatePlayerAttemptsInfo);
         });
         
         // ==================== 活动信息显示 ====================
@@ -1691,8 +1694,6 @@
         
         // 兼容旧代码的别名
         const updatePlayerRecords = updatePlayerAttemptsInfo;
-        
-        document.getElementById('nickname').addEventListener('input', updatePlayerAttemptsInfo);
         
         // ==================== 开始游戏 ====================
         function startGame() {
