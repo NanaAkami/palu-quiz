@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Firebase Test</title>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <h1>Firebase Connection Test</h1>
+    <div id="status">Loading...</div>
+    <div id="error"></div>
+    
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDwb5W_Qk9A6LFwcw1piqSRv63wb5kM-t8",
+            authDomain: "nana01-9a9ee.firebaseapp.com",
+            projectId: "nana01-9a9ee",
+            storageBucket: "nana01-9a9ee.firebasestorage.app",
+            messagingSenderId: "462751727825",
+            appId: "1:462751727825:web:7e90dc50d3bc295964c5f0"
+        };
+        
+        try {
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.firestore();
+            
+            // Test write
+            db.collection("test").doc("connection").set({
+                timestamp: new Date().toISOString(),
+                test: true
+            }).then(() => {
+                document.getElementById("status").innerHTML = "✅ Firebase连接成功！写入测试通过。";
+            }).catch(err => {
+                document.getElementById("status").innerHTML = "❌ Firebase写入失败";
+                document.getElementById("error").innerHTML = "错误: " + err.message;
+            });
+            
+            // Test read
+            db.collection("test").doc("connection").get().then(doc => {
+                console.log("Read test:", doc.exists ? "成功" : "文档不存在");
+            }).catch(err => {
+                console.error("Read error:", err);
+            });
+            
+        } catch (e) {
+            document.getElementById("status").innerHTML = "❌ Firebase初始化失败";
+            document.getElementById("error").innerHTML = "错误: " + e.message;
+        }
+    </script>
+</body>
+</html>
