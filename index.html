@@ -8,6 +8,16 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script>
+        // 全局错误捕获
+        window.addEventListener('error', function(e) {
+            console.error('全局错误:', e.message, e.filename, e.lineno);
+            alert('JS错误: ' + e.message + ' (行:' + e.lineno + ')');
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('未处理Promise错误:', e.reason);
+            alert('Promise错误: ' + e.reason);
+        });
+        
         try {
             const firebaseConfig = {
                 apiKey: "AIzaSyDwb5W_Qk9A6LFwcw1piqSRv63wb5kM-t8",
