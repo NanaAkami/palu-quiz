@@ -3,98 +3,576 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>帕鲁答题 - 题库上传工具</title>
+    <title>帕鲁答题 - 题库批量上传工具</title>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <!-- SheetJS for Excel parsing -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
-            font-family: 'Segoe UI', sans-serif;
-            max-width: 800px;
-            margin: 50px auto;
-            padding: 20px;
-            background: #f5f5f5;
-        }
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        }
-        h1 { color: #667eea; }
-        .btn {
+            font-family: 'Segoe UI', 'PingFang SC', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            font-size: 1.1em;
-            border-radius: 25px;
-            cursor: pointer;
-            margin: 10px 5px;
+            min-height: 100vh;
+            padding: 30px 20px;
         }
-        .btn:hover { opacity: 0.9; }
-        .btn-success { background: #28a745; }
-        .status {
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 { 
+            color: #667eea; 
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        /* 标签页 */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+        }
+        
+        .tab {
+            padding: 12px 24px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1em;
+        }
+        
+        .tab:hover {
+            background: #e0e0e0;
+        }
+        
+        .tab.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* 拖拽上传区域 */
+        .drop-zone {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 60px 40px;
+            text-align: center;
+            background: #f8f9ff;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .drop-zone:hover {
+            background: #f0f4ff;
+            border-color: #764ba2;
+        }
+        
+        .drop-zone.dragover {
+            background: #e8eeff;
+            border-color: #28a745;
+            transform: scale(1.02);
+        }
+        
+        .drop-zone .icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+        
+        .drop-zone .title {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .drop-zone .hint {
+            color: #888;
+            font-size: 0.95em;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        /* 模板下载 */
+        .template-section {
             margin-top: 20px;
-            padding: 15px;
+            padding: 20px;
+            background: #f8f9fa;
             border-radius: 10px;
+        }
+        
+        .template-section h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .template-section p {
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        /* 预览表格 */
+        .preview-section {
+            margin-top: 30px;
+        }
+        
+        .preview-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .preview-table-container {
+            max-height: 400px;
+            overflow: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+        }
+        
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+        
+        .preview-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+        }
+        
+        .preview-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .preview-table tr:nth-child(even) {
             background: #f8f9fa;
         }
-        .status.success { background: #d4edda; color: #155724; }
-        .status.error { background: #f8d7da; color: #721c24; }
-        .progress {
-            margin-top: 10px;
-            height: 20px;
-            background: #e9ecef;
+        
+        .preview-table tr:hover {
+            background: #f0f4ff;
+        }
+        
+        .preview-table .required {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        .preview-table .optional {
+            color: #6c757d;
+        }
+        
+        .preview-table .error-row {
+            background: #f8d7da !important;
+        }
+        
+        /* 状态提示 */
+        .status {
+            margin-top: 20px;
+            padding: 15px 20px;
             border-radius: 10px;
+            display: none;
+        }
+        
+        .status.success { 
+            background: #d4edda; 
+            color: #155724; 
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error { 
+            background: #f8d7da; 
+            color: #721c24; 
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+        
+        /* 进度条 */
+        .progress-container {
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .progress {
+            height: 25px;
+            background: #e9ecef;
+            border-radius: 12px;
             overflow: hidden;
         }
+        
         .progress-bar {
             height: 100%;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
         }
-        code {
-            background: #f4f4f4;
+        
+        .progress-text {
+            text-align: center;
+            margin-top: 10px;
+            color: #666;
+        }
+        
+        /* 按钮 */
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1em;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-block;
+            margin: 5px;
+        }
+        
+        .btn:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .btn-success { 
+            background: #28a745; 
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+        }
+        
+        .btn-sm {
+            padding: 8px 20px;
+            font-size: 0.9em;
+        }
+        
+        /* 操作按钮区域 */
+        .actions {
+            margin-top: 25px;
+            text-align: center;
+        }
+        
+        /* 文件信息 */
+        .file-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e8f5e9;
+            border-radius: 10px;
+            display: none;
+        }
+        
+        .file-info.show {
+            display: block;
+        }
+        
+        /* 统计信息 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-card .value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-card .label {
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        /* 说明区域 */
+        .info-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .info-section h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .info-section ol, .info-section ul {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+        
+        .info-section li {
+            margin-bottom: 5px;
+        }
+        
+        .info-section code {
+            background: #e9ecef;
             padding: 2px 6px;
             border-radius: 3px;
             font-family: monospace;
+            color: #d63384;
+        }
+        
+        /* 字段说明 */
+        .field-legend {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .field-legend span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .field-legend .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .field-legend .dot.required {
+            background: #dc3545;
+        }
+        
+        .field-legend .dot.optional {
+            background: #6c757d;
+        }
+        
+        /* 原有快速上传区域 */
+        .quick-upload {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 2px dashed #e0e0e0;
+        }
+        
+        .quick-upload h3 {
+            margin-bottom: 15px;
+            color: #333;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🚀 帕鲁答题 - 题库上传工具</h1>
-        <p>将题目数据上传到 Firebase Realtime Database</p>
+        <h1>🚀 帕鲁答题 - 题库批量上传工具</h1>
+        <p class="subtitle">支持 Excel 批量导入，保留扩展字段供未来拓展</p>
         
-        <div style="margin: 20px 0;">
-            <button class="btn" onclick="uploadQuestions()">📤 上传题目到 Firebase</button>
-            <button class="btn btn-success" onclick="checkDatabase()">🔍 检查数据库状态</button>
+        <!-- 标签页 -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('excel')">📊 Excel 批量导入</button>
+            <button class="tab" onclick="switchTab('quick')">⚡ 快速上传</button>
+            <button class="tab" onclick="switchTab('status')">📋 数据库状态</button>
         </div>
         
-        <div id="status" class="status" style="display:none;"></div>
-        <div id="progress" class="progress" style="display:none;">
-            <div id="progressBar" class="progress-bar" style="width: 0%"></div>
+        <!-- Excel 批量导入 -->
+        <div class="tab-content active" id="tab-excel">
+            <!-- 拖拽上传区域 -->
+            <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                <div class="icon">📁</div>
+                <div class="title">点击或拖拽 Excel 文件到此处</div>
+                <div class="hint">支持 .xlsx, .xls, .csv 格式</div>
+            </div>
+            <input type="file" class="file-input" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFileSelect(event)">
+            
+            <!-- 文件信息 -->
+            <div class="file-info" id="fileInfo">
+                <strong>📄 已选择文件：</strong><span id="fileName"></span>
+                <span id="fileSize" style="color: #666; margin-left: 10px;"></span>
+            </div>
+            
+            <!-- 统计信息 -->
+            <div class="stats-grid" id="statsGrid" style="display: none;">
+                <div class="stat-card">
+                    <div class="value" id="statTotal">0</div>
+                    <div class="label">总题目数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" id="statValid">0</div>
+                    <div class="label">有效题目</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" id="statInvalid">0</div>
+                    <div class="label">异常题目</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" id="statWithExtra">0</div>
+                    <div class="label">含扩展字段</div>
+                </div>
+            </div>
+            
+            <!-- 预览表格 -->
+            <div class="preview-section" id="previewSection" style="display: none;">
+                <h3>📋 数据预览 <small style="font-weight: normal; color: #666;">(最多显示前 20 条)</small></h3>
+                <div class="field-legend">
+                    <span><span class="dot required"></span> 必填字段</span>
+                    <span><span class="dot optional"></span> 扩展字段(未来用)</span>
+                </div>
+                <div class="preview-table-container">
+                    <table class="preview-table" id="previewTable">
+                        <thead></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- 操作按钮 -->
+            <div class="actions" id="actions" style="display: none;">
+                <button class="btn btn-success" id="uploadBtn" onclick="uploadToFirebase()">
+                    📤 上传题目到 Firebase
+                </button>
+                <button class="btn btn-secondary" onclick="clearFile()">
+                    🗑️ 清除重选
+                </button>
+            </div>
+            
+            <!-- 进度条 -->
+            <div class="progress-container" id="progressContainer">
+                <div class="progress">
+                    <div class="progress-bar" id="progressBar" style="width: 0%">0%</div>
+                </div>
+                <div class="progress-text" id="progressText">准备上传...</div>
+            </div>
+            
+            <!-- 状态提示 -->
+            <div class="status" id="status"></div>
+            
+            <!-- 模板下载 -->
+            <div class="template-section">
+                <h3>📥 模板下载</h3>
+                <p>下载标准模板，按格式填写后上传</p>
+                <button class="btn btn-sm" onclick="downloadTemplate()">下载 Excel 模板</button>
+                <button class="btn btn-sm btn-secondary" onclick="downloadExample()">下载示例数据</button>
+            </div>
+            
+            <!-- 使用说明 -->
+            <div class="info-section">
+                <h3>📖 使用说明</h3>
+                <ol>
+                    <li>下载上方 Excel 模板</li>
+                    <li>按模板格式填写题目数据（<code>选项A/B/C/D</code> 至少填写2个）</li>
+                    <li>拖拽或点击上传区域选择文件</li>
+                    <li>预览确认数据无误后点击"上传题目到 Firebase"</li>
+                </ol>
+                <h4 style="margin-top: 20px; margin-bottom: 10px;">字段说明：</h4>
+                <ul>
+                    <li><strong>序号</strong>：题目编号（可选）</li>
+                    <li><strong>出题人</strong>：题目作者（可选，存入扩展字段）</li>
+                    <li><strong>题型</strong>：单选/多选/判断（可选，存入扩展字段）</li>
+                    <li><strong>预估难度</strong>：★-★★★★★（可选，存入扩展字段）</li>
+                    <li><strong>题目分类</strong>：如道具相关、帕鲁技能等（可选，存入扩展字段）</li>
+                    <li><strong>题目</strong> <span style="color: #dc3545;">*</span>：题目正文（必填）</li>
+                    <li><strong>题目补充（图片/视频）</strong>：媒体链接（可选，存入扩展字段）</li>
+                    <li><strong>选项A/B/C/D/E</strong> <span style="color: #dc3545;">*</span>：至少填写2个选项（必填）</li>
+                    <li><strong>正确答案</strong> <span style="color: #dc3545;">*</span>：填写 A/B/C/D/E（必填）</li>
+                    <li><strong>答案解析/来源</strong>：答案说明（可选，存入扩展字段）</li>
+                </ul>
+                <p style="margin-top: 15px; color: #666; font-size: 0.9em;">
+                    💡 提示：第一行为示例数据（序号为"例"的行），会被自动跳过不上传。
+                </p>
+            </div>
         </div>
         
-        <hr>
+        <!-- 快速上传 -->
+        <div class="tab-content" id="tab-quick">
+            <div class="quick-upload">
+                <h3>⚡ 快速上传内置题库</h3>
+                <p style="color: #666; margin-bottom: 15px;">使用内置的 60 道默认题目覆盖数据库</p>
+                <button class="btn" onclick="uploadDefaultQuestions()">📤 上传默认题库</button>
+                <div id="quickStatus" class="status" style="margin-top: 20px;"></div>
+            </div>
+        </div>
         
-        <h3>📋 使用说明</h3>
-        <ol>
-            <li>点击"上传题目到 Firebase"按钮</li>
-            <li>等待上传完成（约 60 道题目）</li>
-            <li>上传成功后，刷新主游戏页面即可</li>
-        </ol>
-        
-        <h3>⚠️ 注意事项</h3>
-        <ul>
-            <li>Firebase 数据库规则需要允许写入（临时设置为公开读写）</li>
-            <li>上传完成后，请将数据库规则改回只读</li>
-        </ul>
+        <!-- 数据库状态 -->
+        <div class="tab-content" id="tab-status">
+            <div style="text-align: center; padding: 40px;">
+                <button class="btn" onclick="checkDatabase()">🔍 检查数据库状态</button>
+                <button class="btn btn-secondary" onclick="clearDatabase()">🗑️ 清空题库</button>
+            </div>
+            <div id="dbStatus" class="status" style="display: block;"></div>
+        </div>
     </div>
 
     <script>
-        // Firebase 配置
+        // ==================== Firebase 配置 ====================
         const firebaseConfig = {
             apiKey: 'AIzaSyB8s63wS3n7hB3lW_rH3EXAMPLE_ONLY',
             databaseURL: 'https://nana01-9a9ee-default-rtdb.asia-southeast1.firebasedatabase.app'
@@ -104,8 +582,480 @@
         const app = firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         
-        // 题库数据（与 upload-questions.js 相同）
-        const QUESTIONS = [
+        // ==================== 全局状态 ====================
+        let parsedQuestions = [];
+        let parsedExtras = [];
+        
+        // ==================== 标签页切换 ====================
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById('tab-' + tabName).classList.add('active');
+        }
+        
+        // ==================== 拖拽上传 ====================
+        const dropZone = document.getElementById('dropZone');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+        });
+        
+        dropZone.addEventListener('drop', handleDrop, false);
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        }
+        
+        function handleFileSelect(e) {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        }
+        
+        // ==================== 文件解析 ====================
+        function handleFile(file) {
+            // 检查文件类型
+            const validTypes = [
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'application/vnd.ms-excel',
+                'text/csv',
+                'application/vnd.ms-excel.sheet.macroEnabled.12'
+            ];
+            
+            if (!validTypes.includes(file.type) && !file.name.match(/\.(xlsx|xls|csv)$/i)) {
+                showStatus('请选择有效的 Excel 文件 (.xlsx, .xls, .csv)', 'error');
+                return;
+            }
+            
+            // 显示文件信息
+            document.getElementById('fileName').textContent = file.name;
+            document.getElementById('fileSize').textContent = `(${(file.size / 1024).toFixed(1)} KB)`;
+            document.getElementById('fileInfo').classList.add('show');
+            
+            // 读取文件
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // 读取第一个工作表
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    
+                    // 转换为 JSON
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    if (jsonData.length < 2) {
+                        showStatus('文件数据为空或格式不正确', 'error');
+                        return;
+                    }
+                    
+                    parseExcelData(jsonData);
+                } catch (error) {
+                    console.error(error);
+                    showStatus('解析文件失败: ' + error.message, 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        // ==================== 解析 Excel 数据 ====================
+        function parseExcelData(rows) {
+            parsedQuestions = [];
+            parsedExtras = [];
+            
+            // 获取表头
+            const headers = rows[0].map(h => String(h || '').trim());
+            
+            // 查找列索引
+            const colIndex = {
+                question: findColumnIndex(headers, ['题干内容', '题目', '题干', 'question']),
+                optionA: findColumnIndex(headers, ['选项A', '选项 A', 'A', 'optionA', 'option_a']),
+                optionB: findColumnIndex(headers, ['选项B', '选项 B', 'B', 'optionB', 'option_b']),
+                optionC: findColumnIndex(headers, ['选项C', '选项 C', 'C', 'optionC', 'option_c']),
+                optionD: findColumnIndex(headers, ['选项D', '选项 D', 'D', 'optionD', 'option_d']),
+                optionE: findColumnIndex(headers, ['选项E', '选项 E', 'E', 'optionE', 'option_e']),
+                correct: findColumnIndex(headers, ['正确选项', '正确答案', '正确', 'correct', 'answer']),
+                // 扩展字段
+                supplement: findColumnIndex(headers, ['题目补充', '补充', '图片', '视频', 'supplement', 'media']),
+                difficulty: findColumnIndex(headers, ['预估难度', '难度', 'difficulty', 'level']),
+                type: findColumnIndex(headers, ['题型', '题目类型', 'type', 'question_type']),
+                explanation: findColumnIndex(headers, ['答案解析', '解析', '来源', 'explanation', 'source', '解析/来源']),
+                category: findColumnIndex(headers, ['题目分类', '分类', 'category']),
+                author: findColumnIndex(headers, ['出题人', '作者', 'author'])
+            };
+            
+            // 验证必填列
+            if (colIndex.question === -1 || colIndex.optionA === -1 || colIndex.optionB === -1 || colIndex.correct === -1) {
+                showStatus('模板格式不正确，缺少必要列（题干内容、选项A、选项B、正确选项）', 'error');
+                return;
+            }
+            
+            // 解析每一行
+            let validCount = 0;
+            let invalidCount = 0;
+            let withExtraCount = 0;
+            let skippedExampleCount = 0;
+            
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                if (!row || row.length === 0) continue;
+                
+                // 检查是否是示例行（第一列为"例"或"示例"）
+                const firstCol = String(row[0] || '').trim();
+                if (firstCol === '例' || firstCol === '示例' || firstCol === 'example' || firstCol === '样例') {
+                    skippedExampleCount++;
+                    continue;
+                }
+                
+                const question = String(row[colIndex.question] || '').trim();
+                const optionA = String(row[colIndex.optionA] || '').trim();
+                const optionB = String(row[colIndex.optionB] || '').trim();
+                const optionC = colIndex.optionC !== -1 ? String(row[colIndex.optionC] || '').trim() : '';
+                const optionD = colIndex.optionD !== -1 ? String(row[colIndex.optionD] || '').trim() : '';
+                const optionE = colIndex.optionE !== -1 ? String(row[colIndex.optionE] || '').trim() : '';
+                const correct = String(row[colIndex.correct] || '').trim().toUpperCase();
+                
+                // 扩展字段
+                const supplement = colIndex.supplement !== -1 ? String(row[colIndex.supplement] || '').trim() : '';
+                const difficulty = colIndex.difficulty !== -1 ? String(row[colIndex.difficulty] || '').trim() : '';
+                const type = colIndex.type !== -1 ? String(row[colIndex.type] || '').trim() : '';
+                const explanation = colIndex.explanation !== -1 ? String(row[colIndex.explanation] || '').trim() : '';
+                const category = colIndex.category !== -1 ? String(row[colIndex.category] || '').trim() : '';
+                const author = colIndex.author !== -1 ? String(row[colIndex.author] || '').trim() : '';
+                
+                // 验证必填
+                if (!question || !optionA || !optionB) {
+                    invalidCount++;
+                    continue;
+                }
+                
+                // 构建选项数组
+                const options = [optionA, optionB];
+                if (optionC) options.push(optionC);
+                if (optionD) options.push(optionD);
+                if (optionE) options.push(optionE);
+                
+                // 验证正确答案
+                const correctMap = { 'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4 };
+                let correctIndex = correctMap[correct];
+                if (correctIndex === undefined || correctIndex >= options.length) {
+                    // 尝试直接解析数字
+                    const numCorrect = parseInt(correct) - 1;
+                    if (!isNaN(numCorrect) && numCorrect >= 0 && numCorrect < options.length) {
+                        correctIndex = numCorrect;
+                    } else {
+                        invalidCount++;
+                        continue;
+                    }
+                }
+                
+                // 保存题目数据
+                parsedQuestions.push({
+                    question: question,
+                    options: options,
+                    correct: correctIndex
+                });
+                
+                // 保存扩展字段
+                const extra = {};
+                if (supplement) extra.supplement = supplement;
+                if (difficulty) extra.difficulty = difficulty;
+                if (type) extra.type = type;
+                if (explanation) extra.explanation = explanation;
+                if (category) extra.category = category;
+                if (author) extra.author = author;
+                
+                parsedExtras.push(extra);
+                
+                if (Object.keys(extra).length > 0) {
+                    withExtraCount++;
+                }
+                
+                validCount++;
+            }
+            
+            // 更新统计
+            document.getElementById('statTotal').textContent = validCount + invalidCount + skippedExampleCount;
+            document.getElementById('statValid').textContent = validCount;
+            document.getElementById('statInvalid').textContent = invalidCount;
+            document.getElementById('statWithExtra').textContent = withExtraCount;
+            document.getElementById('statsGrid').style.display = 'grid';
+            
+            // 显示预览
+            showPreview(headers, colIndex);
+            
+            // 显示操作按钮
+            if (validCount > 0) {
+                document.getElementById('actions').style.display = 'block';
+                showStatus(`成功解析 ${validCount} 道有效题目`, 'success');
+            } else {
+                showStatus('未找到有效题目，请检查文件格式', 'error');
+            }
+        }
+        
+        function findColumnIndex(headers, possibleNames) {
+            // 第一遍：精确匹配（优先）
+            for (const name of possibleNames) {
+                const index = headers.findIndex(h => 
+                    h.toLowerCase() === name.toLowerCase()
+                );
+                if (index !== -1) return index;
+            }
+            // 第二遍：包含匹配（精确匹配失败时使用）
+            for (const name of possibleNames) {
+                const index = headers.findIndex(h => 
+                    h.includes(name)
+                );
+                if (index !== -1) return index;
+            }
+            return -1;
+        }
+        
+        // ==================== 显示预览 ====================
+        function showPreview(headers, colIndex) {
+            const table = document.getElementById('previewTable');
+            const thead = table.querySelector('thead');
+            const tbody = table.querySelector('tbody');
+            
+            // 构建表头
+            const requiredCols = ['题目', '选项A', '选项B', '选项C', '选项D', '选项E', '正确答案'];
+            const optionalCols = ['题目补充', '预估难度', '题型', '答案解析', '分类', '出题人'];
+            
+            let headerHTML = '<tr>';
+            requiredCols.forEach(col => {
+                headerHTML += `<th class="required">${col}</th>`;
+            });
+            optionalCols.forEach(col => {
+                headerHTML += `<th class="optional">${col}</th>`;
+            });
+            headerHTML += '</tr>';
+            thead.innerHTML = headerHTML;
+            
+            // 构建表格内容（最多20条）
+            let tbodyHTML = '';
+            const displayCount = Math.min(parsedQuestions.length, 20);
+            
+            for (let i = 0; i < displayCount; i++) {
+                const q = parsedQuestions[i];
+                const e = parsedExtras[i];
+                
+                tbodyHTML += '<tr>';
+                tbodyHTML += `<td>${escapeHtml(q.question.substring(0, 50))}${q.question.length > 50 ? '...' : ''}</td>`;
+                tbodyHTML += `<td>${escapeHtml(q.options[0])}</td>`;
+                tbodyHTML += `<td>${escapeHtml(q.options[1])}</td>`;
+                tbodyHTML += `<td>${escapeHtml(q.options[2] || '')}</td>`;
+                tbodyHTML += `<td>${escapeHtml(q.options[3] || '')}</td>`;
+                tbodyHTML += `<td>${escapeHtml(q.options[4] || '')}</td>`;
+                tbodyHTML += `<td>${['A', 'B', 'C', 'D', 'E'][q.correct]}</td>`;
+                tbodyHTML += `<td>${e.supplement ? '✓' : '-'}</td>`;
+                tbodyHTML += `<td>${e.difficulty || '-'}</td>`;
+                tbodyHTML += `<td>${e.type || '-'}</td>`;
+                tbodyHTML += `<td>${e.explanation ? '✓' : '-'}</td>`;
+                tbodyHTML += `<td>${e.category || '-'}</td>`;
+                tbodyHTML += `<td>${e.author || '-'}</td>`;
+                tbodyHTML += '</tr>';
+            }
+            
+            if (parsedQuestions.length > 20) {
+                tbodyHTML += `<tr><td colspan="13" style="text-align: center; color: #666;">... 还有 ${parsedQuestions.length - 20} 条数据 ...</td></tr>`;
+            }
+            
+            tbody.innerHTML = tbodyHTML;
+            
+            document.getElementById('previewSection').style.display = 'block';
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // ==================== 上传到 Firebase ====================
+        async function uploadToFirebase() {
+            if (parsedQuestions.length === 0) {
+                showStatus('没有可上传的题目', 'error');
+                return;
+            }
+            
+            const uploadBtn = document.getElementById('uploadBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            
+            uploadBtn.disabled = true;
+            progressContainer.style.display = 'block';
+            showStatus('正在上传到 Firebase...', 'info');
+            
+            try {
+                // 准备数据
+                const questionsData = {};
+                const answersData = {};
+                const extrasData = {};  // 扩展字段
+                
+                const total = parsedQuestions.length;
+                
+                for (let i = 0; i < total; i++) {
+                    const q = parsedQuestions[i];
+                    const e = parsedExtras[i];
+                    
+                    // 题目数据（前端使用）
+                    questionsData[i] = {
+                        question: q.question,
+                        options: q.options
+                    };
+                    
+                    // 答案数据（验证用）
+                    answersData[i] = {
+                        correct: q.correct
+                    };
+                    
+                    // 扩展字段（未来拓展用）
+                    if (Object.keys(e).length > 0) {
+                        extrasData[i] = e;
+                    }
+                    
+                    // 更新进度
+                    const progress = Math.round(((i + 1) / total) * 100);
+                    progressBar.style.width = progress + '%';
+                    progressBar.textContent = progress + '%';
+                    progressText.textContent = `正在处理: ${i + 1} / ${total}`;
+                    
+                    // 每10条暂停一下，避免阻塞
+                    if (i % 10 === 0) {
+                        await new Promise(r => setTimeout(r, 10));
+                    }
+                }
+                
+                // 上传题目
+                progressText.textContent = '正在上传题目数据...';
+                await db.ref('/questions').set(questionsData);
+                
+                // 上传答案
+                progressText.textContent = '正在上传答案数据...';
+                await db.ref('/answers').set(answersData);
+                
+                // 上传扩展字段（如果有）
+                if (Object.keys(extrasData).length > 0) {
+                    progressText.textContent = '正在上传扩展字段...';
+                    await db.ref('/extras').set(extrasData);
+                } else {
+                    // 如果没有扩展字段，清除旧的
+                    await db.ref('/extras').remove();
+                }
+                
+                // 上传配置
+                await db.ref('/config').set({
+                    totalQuestions: total,
+                    version: '3.0',
+                    updatedAt: Date.now(),
+                    updatedBy: 'excel_upload',
+                    hasExtras: Object.keys(extrasData).length > 0
+                });
+                
+                // 完成
+                progressBar.style.width = '100%';
+                progressBar.textContent = '100%';
+                progressText.textContent = '上传完成！';
+                
+                showStatus(`✅ 上传成功！<br>已上传 ${total} 道题目<br>${Object.keys(extrasData).length > 0 ? `包含 ${Object.keys(extrasData).length} 道带扩展字段的题目` : ''}<br><br>现在可以刷新主游戏页面开始答题了。`, 'success');
+                
+            } catch (error) {
+                console.error(error);
+                showStatus(`❌ 上传失败<br>错误：${error.message}<br><br>可能原因：<br>1. Firebase 数据库规则不允许写入<br>2. 网络连接问题<br>3. 数据格式错误`, 'error');
+            } finally {
+                uploadBtn.disabled = false;
+            }
+        }
+        
+        // ==================== 清除文件 ====================
+        function clearFile() {
+            parsedQuestions = [];
+            parsedExtras = [];
+            document.getElementById('fileInput').value = '';
+            document.getElementById('fileInfo').classList.remove('show');
+            document.getElementById('statsGrid').style.display = 'none';
+            document.getElementById('previewSection').style.display = 'none';
+            document.getElementById('actions').style.display = 'none';
+            document.getElementById('progressContainer').style.display = 'none';
+            hideStatus();
+        }
+        
+        // ==================== 下载模板 ====================
+        function downloadTemplate() {
+            const headers = ['序号', '出题人', '题型', '预估难度', '题目分类', '题目', '题目补充（图片/视频）', '选项A', '选项B', '选项C', '选项D', '选项E', '正确答案', '答案解析/来源'];
+            const example = ['1', '张三', '单选', '★★', '道具相关', '这里是题目内容', '', '选项A文本', '选项B文本', '选项C文本（可选）', '选项D文本（可选）', '选项E文本（可选）', 'A', '答案解析（可选）'];
+            
+            const ws = XLSX.utils.aoa_to_sheet([headers, example]);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '题库模板');
+            
+            // 设置列宽
+            ws['!cols'] = [
+                { wch: 6 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 },
+                { wch: 40 }, { wch: 25 }, { wch: 18 }, { wch: 18 }, { wch: 18 },
+                { wch: 18 }, { wch: 18 }, { wch: 10 }, { wch: 30 }
+            ];
+            
+            XLSX.writeFile(wb, '帕鲁答题_题库模板.xlsx');
+        }
+        
+        function downloadExample() {
+            const headers = ['序号', '出题人', '题型', '预估难度', '题目分类', '题目', '题目补充（图片/视频）', '选项A', '选项B', '选项C', '选项D', '选项E', '正确答案', '答案解析/来源'];
+            const examples = [
+                ['1', '张三', '判断题', '★', '帕鲁知识', '游戏中的"幸运帕鲁"我们一般称之为', '', '闪光帕鲁', '狂暴帕鲁头目', '', '', '', 'A', '闪光帕鲁有特殊外观'],
+                ['2', '李四', '单选', '★★', '游戏机制', '《幻兽帕鲁》的PC版开发商是哪家公司？', '', 'KRAFTON', 'Pocketpair', '', '', '', 'B', 'Pocketpair是日本游戏公司'],
+                ['3', '王五', '多选', '★★★', '据点建设', '以下哪些道具需要给帕鲁使用而非玩家？', '', '复活药', '归途雷云', '命脉秘药', '高等技术书', '', 'AC', '复活药和命脉秘药是给帕鲁用的'],
+            ];
+            
+            const ws = XLSX.utils.aoa_to_sheet([headers, ...examples]);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '示例数据');
+            
+            ws['!cols'] = [
+                { wch: 6 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 12 },
+                { wch: 40 }, { wch: 25 }, { wch: 18 }, { wch: 18 }, { wch: 18 },
+                { wch: 18 }, { wch: 18 }, { wch: 10 }, { wch: 30 }
+            ];
+            
+            XLSX.writeFile(wb, '帕鲁答题_示例数据.xlsx');
+        }
+        
+        // ==================== 状态提示 ====================
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.innerHTML = message;
+            status.className = 'status ' + type;
+            status.style.display = 'block';
+        }
+        
+        function hideStatus() {
+            document.getElementById('status').style.display = 'none';
+        }
+        
+        // ==================== 快速上传默认题库 ====================
+        const DEFAULT_QUESTIONS = [
             {question: "游戏中的'幸运帕鲁'我们一般称之为", options: ["闪光帕鲁", "狂暴帕鲁头目"], correct: 0},
             {question: "不考虑词条的情况下，以下哪只帕鲁通常具有更大的食量", options: ["森猛犸", "紫霞鹿"], correct: 0},
             {question: "《幻兽帕鲁》的PC版开发商是哪家公司？", options: ["KRAFTON", "Pocketpair"], correct: 1},
@@ -164,14 +1114,10 @@
             {question: "帕鲁工作适应性等级最高是多少级", options: ["4", "5", "6", "7"], correct: 0}
         ];
         
-        async function uploadQuestions() {
-            const status = document.getElementById('status');
-            const progress = document.getElementById('progress');
-            const progressBar = document.getElementById('progressBar');
-            
+        async function uploadDefaultQuestions() {
+            const status = document.getElementById('quickStatus');
             status.style.display = 'block';
-            progress.style.display = 'block';
-            status.className = 'status';
+            status.className = 'status info';
             status.textContent = '准备上传...';
             
             try {
@@ -179,7 +1125,7 @@
                 const questionsData = {};
                 const answersData = {};
                 
-                QUESTIONS.forEach((q, index) => {
+                DEFAULT_QUESTIONS.forEach((q, index) => {
                     questionsData[index] = {
                         question: q.question,
                         options: q.options
@@ -192,55 +1138,94 @@
                 // 上传题目
                 status.textContent = '正在上传题目...';
                 await db.ref('/questions').set(questionsData);
-                progressBar.style.width = '50%';
                 
                 // 上传答案
                 status.textContent = '正在上传答案...';
                 await db.ref('/answers').set(answersData);
-                progressBar.style.width = '100%';
+                
+                // 清除扩展字段（因为是默认题库）
+                await db.ref('/extras').remove();
                 
                 // 上传配置
                 await db.ref('/config').set({
-                    totalQuestions: QUESTIONS.length,
+                    totalQuestions: DEFAULT_QUESTIONS.length,
                     version: '3.0',
-                    updatedAt: Date.now()
+                    updatedAt: Date.now(),
+                    updatedBy: 'default_upload',
+                    hasExtras: false
                 });
                 
                 status.className = 'status success';
-                status.innerHTML = `✅ 上传成功！<br>已上传 ${QUESTIONS.length} 道题目<br><br>现在可以刷新主游戏页面开始答题了。`;
+                status.innerHTML = `✅ 上传成功！<br>已上传 ${DEFAULT_QUESTIONS.length} 道默认题目<br><br>现在可以刷新主游戏页面开始答题了。`;
                 
             } catch (error) {
                 console.error(error);
                 status.className = 'status error';
-                status.innerHTML = `❌ 上传失败<br>错误：${error.message}<br><br>可能原因：<br>1. Firebase 数据库规则不允许写入<br>2. 网络连接问题`;
+                status.innerHTML = `❌ 上传失败<br>错误：${error.message}`;
             }
         }
         
+        // ==================== 检查数据库状态 ====================
         async function checkDatabase() {
-            const status = document.getElementById('status');
+            const status = document.getElementById('dbStatus');
             status.style.display = 'block';
-            status.className = 'status';
+            status.className = 'status info';
             status.textContent = '检查中...';
             
             try {
-                const qSnap = await db.ref('/questions').once('value');
-                const aSnap = await db.ref('/answers').once('value');
-                const cSnap = await db.ref('/config').once('value');
+                const [qSnap, aSnap, eSnap, cSnap] = await Promise.all([
+                    db.ref('/questions').once('value'),
+                    db.ref('/answers').once('value'),
+                    db.ref('/extras').once('value'),
+                    db.ref('/config').once('value')
+                ]);
                 
                 const qCount = qSnap.exists() ? Object.keys(qSnap.val()).length : 0;
                 const aCount = aSnap.exists() ? Object.keys(aSnap.val()).length : 0;
+                const eCount = eSnap.exists() ? Object.keys(eSnap.val()).length : 0;
                 const config = cSnap.val();
                 
                 status.className = 'status success';
                 status.innerHTML = `📊 数据库状态<br><br>
                     题目数量：${qCount} 道<br>
                     答案数量：${aCount} 个<br>
+                    扩展字段：${eCount} 条<br>
                     配置版本：${config?.version || '未设置'}<br>
-                    最后更新：${config?.updatedAt ? new Date(config.updatedAt).toLocaleString() : '未设置'}`;
+                    含扩展数据：${config?.hasExtras ? '是' : '否'}<br>
+                    最后更新：${config?.updatedAt ? new Date(config.updatedAt).toLocaleString() : '未设置'}<br>
+                    更新方式：${config?.updatedBy || '未知'}`;
                 
             } catch (error) {
                 status.className = 'status error';
                 status.innerHTML = `❌ 检查失败<br>错误：${error.message}`;
+            }
+        }
+        
+        // ==================== 清空数据库 ====================
+        async function clearDatabase() {
+            if (!confirm('确定要清空题库吗？这将删除所有题目数据！')) {
+                return;
+            }
+            
+            const status = document.getElementById('dbStatus');
+            status.style.display = 'block';
+            status.className = 'status info';
+            status.textContent = '正在清空...';
+            
+            try {
+                await Promise.all([
+                    db.ref('/questions').remove(),
+                    db.ref('/answers').remove(),
+                    db.ref('/extras').remove(),
+                    db.ref('/config').remove()
+                ]);
+                
+                status.className = 'status success';
+                status.textContent = '✅ 数据库已清空';
+                
+            } catch (error) {
+                status.className = 'status error';
+                status.innerHTML = `❌ 清空失败<br>错误：${error.message}`;
             }
         }
     </script>
